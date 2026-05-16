@@ -1,52 +1,60 @@
 import { Stack } from "expo-router";
-import { View, StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { useState } from "react";
 import Header from "../components/Header";
 import SideMenu from "../components/SideMenu";
 import { Colors } from "../constants/colors";
-import { MaterialCommunityIcons } from "@expo/vector-icons"; // 👈 صححنا هنا
-import ChatModal from "@/components/ChatModal";
+import { useFCM } from "../hooks/useFCM";
+
+// import { usePathname } from "expo-router";
+// import { Pressable } from "react-native";
+// import { MaterialCommunityIcons } from "@expo/vector-icons";
+// import ChatModal from "@/components/ChatModal";
 
 export default function RootLayout() {
+  useFCM(1); // مؤقت
+
   const [menuOpen, setMenuOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+
+  // const [chatOpen, setChatOpen] = useState(false);
+  // const pathname = usePathname();
 
   return (
-  <View style={styles.container}>
-  <Header
-    onMenuPress={() => {
-      setChatOpen(false);
-      setMenuOpen(true);
-    }}
-  />
+    <View style={styles.container}>
+      <Header
+        onMenuPress={() => {
+          // setChatOpen(false);
+          setMenuOpen(true);
+        }}
+      />
 
-  <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }} />
 
-  {menuOpen && (
-    <SideMenu
-      onClose={() => setMenuOpen(false)}
-    />
-  )}
+      {menuOpen && (
+        <SideMenu
+          onClose={() => setMenuOpen(false)}
+        />
+      )}
 
-  {chatOpen && (
-    <ChatModal
-      onClose={() => setChatOpen(false)}
-    />
-  )}
+      {/*
+      {chatOpen && (
+        <ChatModal onClose={() => setChatOpen(false)} />
+      )}
 
-  <Pressable
-    style={styles.fab}
-    onPress={() => {
-      setChatOpen((prev) => !prev);
-    }}
-  >
-    <MaterialCommunityIcons
-      name="robot-outline"
-      size={24}
-      color="#00231A"
-    />
-  </Pressable>
-</View>
+      {!menuOpen && pathname !== "/ai/assistant" && (
+        <Pressable
+          style={styles.fab}
+          onPress={() => setChatOpen((prev) => !prev)}
+        >
+          <MaterialCommunityIcons
+            name="robot-outline"
+            size={24}
+            color="#00231A"
+          />
+        </Pressable>
+      )}
+      */}
+    </View>
   );
 }
 
@@ -55,6 +63,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+
+  /*
   fab: {
     position: "absolute",
     bottom: 30,
@@ -70,4 +80,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.9,
     shadowRadius: 12,
   },
+  */
 });

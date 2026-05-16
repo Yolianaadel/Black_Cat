@@ -1,329 +1,227 @@
-import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Easing,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+// import { Colors } from "@/constants/colors";
+// import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+// import { usePathname, useRouter } from "expo-router";
+// import { Pressable, StyleSheet, Text, View } from "react-native";
 
-/* ===========================
-  Pulsing Dots Component
-=========================== */
-const PulsingDots = () => {
-  const dot1 = useRef(new Animated.Value(0.3)).current;
-  const dot2 = useRef(new Animated.Value(0.3)).current;
-  const dot3 = useRef(new Animated.Value(0.3)).current;
+// type Props = {
+//   onClose: () => void;
+// };
 
-  useEffect(() => {
-    const createAnimation = (dot: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(dot, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-            easing: Easing.ease,
-          }),
-          Animated.timing(dot, {
-            toValue: 0.3,
-            duration: 400,
-            useNativeDriver: true,
-            easing: Easing.ease,
-          }),
-        ]),
-      );
+// export default function SideMenu({ onClose }: Props) {
+//   const router = useRouter();
+//   const pathname = usePathname();
 
-    Animated.parallel([
-      createAnimation(dot1, 0),
-      createAnimation(dot2, 200),
-      createAnimation(dot3, 400),
-    ]).start();
-  }, []);
+//   return (
+//     <View style={styles.overlay}>
+//       <View style={styles.menu}>
+//         {/* TOP BAR */}
+//         <View style={styles.top}>
+//           <View style={styles.logoRow}>
+//             <View style={{ flexDirection: "row", alignItems: "center" }}>
+//               <MaterialCommunityIcons
+//                 name="shield-outline"
+//                 size={26}
+//                 color="#00ffcc"
+//               />
 
-  return (
-    <View style={{ flexDirection: "row", gap: 6 }}>
-      <Animated.View style={[styles.dot, { opacity: dot1 }]} />
-      <Animated.View style={[styles.dot, { opacity: dot2 }]} />
-      <Animated.View style={[styles.dot, { opacity: dot3 }]} />
-    </View>
-  );
-};
-type Message = {
-  id: string;
-  text: string;
-  fromBot: boolean;
-  isLoading?: boolean; // 👈 مهمة جدًا
-};
+//               <MaterialCommunityIcons
+//                 name="cat"
+//                 size={20}
+//                 color="#00ffcc"
+//                 style={{ marginLeft: -18 }}
+//               />
+//             </View>
 
-/* ===========================
-   Chat Modal
-=========================== */
-export default function ChatModal({ onClose }: any) {
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    { id: "1", text: "👋 Hello! How can I help you?", fromBot: true },
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
+//             <Text style={styles.logo}>
+//               BLACK<Text style={styles.accent}>CAT</Text>
+//             </Text>
+//           </View>
 
-  const flatListRef = useRef<any>(null);
+//           <Pressable onPress={onClose}>
+//             <Text style={styles.close}>✕</Text>
+//           </Pressable>
+//         </View>
 
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(50)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
+//         {/* HOME */}
+//         <Pressable
+//           style={styles.itemRow}
+//           onPress={() => {
+//             onClose();
+//             router.push("/");
+//           }}
+//         >
+//           <Ionicons name="home-outline" size={18} color={Colors.primary} />
+//           <Text style={styles.item}>Home</Text>
+//         </Pressable>
 
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+//         {/* SCANNER */}
+//         <Pressable
+//           style={styles.itemRow}
+//           onPress={() => {
+//             onClose();
+//             router.push("/tools/scanner");
+//           }}
+//         >
+//           <Ionicons name="scan-outline" size={18} color={Colors.textPrimary} />
+//           <Text style={styles.item}>Scanner</Text>
+//         </Pressable>
 
-  const closeChat = () => {
-    Animated.parallel([
-      Animated.timing(scaleAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start(() => onClose());
-  };
+//         {/* AI ASSISTANT يظهر بس في الصفحة الرئيسية */}
+// {pathname !== "/ai/assistant" && (
+//   <Pressable
+//     style={styles.itemRow}
+//     onPress={() => {
+//       router.push("/ai/assistant");
+//       setTimeout(() => onClose(), 100);
+//     }}
+//   >
+//     <Ionicons
+//       name="sparkles-outline"
+//       size={18}
+//       color={Colors.textPrimary}
+//     />
+//     <Text style={styles.item}>AI Assistant</Text>
+//   </Pressable>
+// )}
 
-  const sendMessage = () => {
-    if (!message.trim()) return;
+//         {/* CONTACT */}
+//         <View style={styles.itemRow}>
+//           <Ionicons name="mail-outline" size={18} color={Colors.textPrimary} />
+//           <Text style={styles.item}>Contact</Text>
+//         </View>
 
-    const userMessage = {
-      id: Date.now().toString(),
-      text: message,
-      fromBot: false,
-    };
+//         {/* ACTIONS */}
+//         <View style={styles.actions}>
+//           <Pressable
+//             style={styles.loginRow}
+//             onPress={() => {
+//               onClose();
+//               router.push("/auth/login");
+//             }}
+//           >
+//             <Ionicons
+//               name="log-in-outline"
+//               size={18}
+//               color={Colors.textPrimary}
+//             />
+//             <Text style={styles.login}>Login</Text>
+//           </Pressable>
 
-    const loadingId = Date.now().toString() + "_loading";
+//           <Pressable
+//             style={styles.register}
+//             onPress={() => {
+//               onClose();
+//               router.push("/auth/register");
+//             }}
+//           >
+//             <Ionicons name="person-add-outline" size={18} color="#00382C" />
+//             <Text style={styles.registerText}>Register</Text>
+//           </Pressable>
+//         </View>
+//       </View>
+//     </View>
+//   );
+// }
 
-    const loadingMessage = {
-      id: loadingId,
-      text: "",
-      fromBot: true,
-      isLoading: true,
-    };
+// const styles = StyleSheet.create({
+//   overlay: {
+//     position: "absolute",
+//     top: 2,
+//     left: 0,
+//     right: 0,
+//     bottom: 0,
+//     backgroundColor: "rgba(0,0,0,0.65)",
+//     zIndex: 200,
+//   },
 
-    setMessages((prev) => [...prev, userMessage, loadingMessage]);
-    setMessage("");
+//   menu: {
+//     backgroundColor: Colors.card,
+//     padding: 28,
+//     minHeight: "45%",
+//     borderBottomLeftRadius: 30,
+//     borderBottomRightRadius: 30,
+//     borderWidth: 1,
+//     borderColor: Colors.border,
+//   },
 
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === loadingId
-            ? {
-                ...msg,
-                text: "Processing data securely...",
-                isLoading: false,
-              }
-            : msg,
-        ),
-      );
-    }, 2500);
-  };
+//   top: {
+//     flexDirection: "row",
+//     justifyContent: "space-between",
+//     alignItems: "center",
+//     marginBottom: 30,
+//   },
 
-  // Auto scroll
-  useEffect(() => {
-    flatListRef.current?.scrollToEnd({ animated: true });
-  }, [messages, isLoading]);
+//   logo: {
+//     color: Colors.textPrimary,
+//     fontSize: 24,
+//     fontWeight: "600",
+//     letterSpacing: 1.5,
+//   },
 
-  return (
-    <View style={styles.overlay}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.wrapper}
-      >
-        <Animated.View
-          style={[
-            styles.chatBox,
-            {
-              opacity,
-              transform: [{ scale: scaleAnim }, { translateY }],
-            },
-          ]}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>BlackCat Assistant</Text>
-            <Pressable onPress={closeChat}>
-              <Ionicons name="close" size={20} color="#fff" />
-            </Pressable>
-          </View>
+//   logoRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     marginLeft: -10,
+//   },
 
-          {/* Messages */}
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={(item) => item.id}
-            style={{ flex: 1 }}
-            renderItem={({ item }) => (
-              <View
-                style={
-                  item.isLoading
-                    ? styles.loadingWrapper
-                    : [
-                        styles.messageBubble,
-                        item.fromBot ? styles.botBubble : styles.userBubble,
-                      ]
-                }
-              >
-                {item.isLoading ? (
-                  <PulsingDots />
-                ) : (
-                  <Text style={{ color: item.fromBot ? "#000" : "#fff" }}>
-                    {item.text}
-                  </Text>
-                )}
-              </View>
-            )}
-          />
+//   accent: {
+//     color: Colors.primary,
+//   },
 
-          {/* Loading */}
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <PulsingDots />
-            </View>
-          )}
+//   close: {
+//     color: Colors.textPrimary,
+//     fontSize: 26,
+//   },
 
-          {/* Input */}
-          <View style={styles.inputContainer}>
-            <TextInput
-              value={message}
-              onChangeText={setMessage}
-              placeholder="Type a message..."
-              placeholderTextColor="#666"
-              style={styles.input}
-            />
-            <Pressable onPress={sendMessage}>
-              <Ionicons name="send" size={22} color="#66FFDD" />
-            </Pressable>
-          </View>
-        </Animated.View>
-      </KeyboardAvoidingView>
-    </View>
-  );
-}
+//   itemRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 12,
+//     paddingVertical: 16,
+//     borderBottomWidth: 1,
+//     borderBottomColor: Colors.border,
+//   },
 
-/* ===========================
-   Styles
-=========================== */
-const styles = StyleSheet.create({
-  overlay: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
+//   item: {
+//     color: Colors.textPrimary,
+//     fontSize: 16,
+//     fontWeight: "400",
+//     letterSpacing: 1.2,
+//   },
 
-  wrapper: {
-    flex: 1,
-    justifyContent: "flex-end",
-    alignItems: "flex-end",
-    paddingRight: 20,
-    paddingBottom: 100,
-  },
+//   actions: {
+//     marginTop: 30,
+//     flexDirection: "row",
+//     alignItems: "center",
+//     justifyContent: "space-between",
+//   },
 
-  chatBox: {
-    width: 320,
-    height: 450,
-    backgroundColor: "#0F1A2B",
-    borderRadius: 22,
-    padding: 16,
-    shadowColor: "#00ffcc",
-    shadowOpacity: 0.8,
-    shadowRadius: 20,
-    elevation: 20,
-  },
+//   loginRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 8,
+//   },
 
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
+//   login: {
+//     color: Colors.textPrimary,
+//     fontSize: 15,
+//     fontWeight: "400",
+//     letterSpacing: 1.2,
+//   },
 
-  title: {
-    color: "#66FFDD",
-    fontWeight: "bold",
-    fontSize: 15,
-  },
+//   register: {
+//     backgroundColor: Colors.primary,
+//     paddingVertical: 14,
+//     paddingHorizontal: 28,
+//     borderRadius: 16,
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 8,
+//   },
 
-  messageBubble: {
-    padding: 10,
-    borderRadius: 14,
-    marginVertical: 5,
-    maxWidth: "80%",
-  },
-
-  botBubble: {
-    backgroundColor: "#66FFDD",
-    alignSelf: "flex-start",
-  },
-
-  userBubble: {
-    backgroundColor: "#1E2A3A",
-    alignSelf: "flex-end",
-  },
-
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: "#1E2A3A",
-    paddingTop: 10,
-  },
-
-  input: {
-    flex: 1,
-    color: "#fff",
-  },
-
-dot: {
-  width: 10,
-  height: 10,
-  borderRadius: 5,
-  backgroundColor: "#00ffcc",
-  shadowColor: "#00ffcc",
-  shadowOpacity: 0.8,
-  shadowRadius: 6,
-  elevation: 5,
-},
-
-  loadingContainer: {
-    alignSelf: "flex-start",
-    marginVertical: 8,
-    paddingLeft: 6,
-    opacity: 0.8,
-  },
-  loadingWrapper: {
-    alignSelf: "flex-start",
-    marginVertical: 8,
-    paddingLeft: 6,
-  },
-});
+//   registerText: {
+//     color: "#00382C",
+//     fontWeight: "600",
+//     letterSpacing: 1,
+//   },
+// });

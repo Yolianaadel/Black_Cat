@@ -1,639 +1,606 @@
 import { Colors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
-import { LineChart } from "react-native-chart-kit";
 import Svg, { Circle } from "react-native-svg";
 
+const BASE_URL = "https://black-cat.up.railway.app";
+const SCAN_ID = "69fa0505feb7c9b5504e90cb";
+
+type Risk = "High" | "Medium" | "Low" | "Informational";
+type RiskFilter = "All" | Risk;
+
+type Vulnerability = {
+  _id: string;
+  scanId: string;
+  url: string;
+  alert: string;
+  param: string;
+  attack: string;
+  risk: Risk;
+  createdAt: string;
+};
+
+type ScanDetails = {
+  _id: string;
+  target: string;
+  scanType: string;
+  status: string;
+  startedAt: string;
+  finishedAt: string;
+  durationText?: string;
+  failureReason: string | null;
+  result: {
+    summary: { high: number; medium: number; low: number; informational: number };
+    baseUrl: string;
+    alertsCount: number;
+    summaryTotal: number;
+  };
+};
+
+type Pagination = { page: number; limit: number; total: number; pages: number };
+
+const riskColor = (risk: Risk) => {
+  if (risk === "High") return { bg: "#FF3B3020", border: "#FF3B30", text: "#FF3B30" };
+  if (risk === "Medium") return { bg: "#FF950020", border: "#FF9500", text: "#FF9500" };
+  if (risk === "Low") return { bg: "#34C75920", border: "#34C759", text: "#34C759" };
+  return { bg: "#00ffcc20", border: "#00ffcc", text: "#00ffcc" };
+};
+
+const formatDate = (date?: string) => {
+  if (!date) return "-";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "-";
+  return d.toLocaleString();
+};
+
+const getDuration = (startedAt?: string, finishedAt?: string) => {
+  if (!startedAt || !finishedAt) return "-";
+  const diff = Math.floor((new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000);
+  if (diff < 0) return "-";
+  const m = Math.floor(diff / 60);
+  const s = diff % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+};
+
+// ===== Summary Card =====
+function SummaryCard({ title, value, color, icon }: { title: string; value: number; color: string; icon: string }) {
+  return (
+    <View style={[styles.summaryCard, { borderColor: color + "50", backgroundColor: color + "15" }]}>
+      <View>
+        <Text style={[styles.summaryNumber, { color }]}>{value}</Text>
+        <Text style={[styles.summaryLabel, { color }]}>{title}</Text>
+      </View>
+      <Ionicons name={icon as any} size={28} color={color} />
+    </View>
+  );
+}
+
+// ===== Alert Ratio Card =====
+function AlertRatioCard({ label, value, percent, color }: { label: string; value: number; percent: number; color: string }) {
+  return (
+    <View style={[styles.ratioCard, { borderColor: color + "40", backgroundColor: color + "15" }]}>
+      <View style={styles.ratioCardHeader}>
+        <View style={[styles.ratioIconBox, { backgroundColor: color + "20", borderColor: color + "40" }]}>
+          <Ionicons name="shield-outline" size={20} color={color} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.ratioLabel}>{label}</Text>
+          <Text style={[styles.ratioSubLabel, { color: "#888" }]}>{percent}% of scan alerts</Text>
+        </View>
+        <Text style={[styles.ratioValue, { color }]}>{value}</Text>
+      </View>
+      <View style={styles.progressBg}>
+        <View style={[styles.progressFill, { width: `${percent}%`, backgroundColor: color }]} />
+      </View>
+      <View style={styles.ratioFooter}>
+        <Text style={styles.ratioFooterLabel}>RATIO</Text>
+        <Text style={[styles.ratioFooterValue, { color }]}>{percent}%</Text>
+      </View>
+    </View>
+  );
+}
+
+// ===== Vuln Row =====
+function VulnRow({ vuln }: { vuln: Vulnerability }) {
+  const c = riskColor(vuln.risk);
+  return (
+    <View style={styles.vulnRow}>
+      <View style={styles.vulnRowTop}>
+        <View style={[styles.riskBadge, { backgroundColor: c.bg, borderColor: c.border }]}>
+          <Text style={[styles.riskBadgeText, { color: c.text }]}>{vuln.risk}</Text>
+        </View>
+        <View style={styles.openBadge}>
+          <Text style={styles.openBadgeText}>Open</Text>
+        </View>
+      </View>
+      <Text style={styles.vulnAlert}>{vuln.alert}</Text>
+      <Text style={styles.vulnUrl} numberOfLines={1}>{vuln.url}</Text>
+      {vuln.param ? <Text style={styles.vulnParam}>Param: {vuln.param}</Text> : null}
+      <Text style={styles.vulnDate}>
+        {new Date(vuln.createdAt).toLocaleDateString()} · {new Date(vuln.createdAt).toLocaleTimeString()}
+      </Text>
+    </View>
+  );
+}
+
 export default function Dashboard() {
-  const high = 2;
-  const medium = 4;
-  const low = 1;
-  const info = 3;
-
-  const total = high + medium + low + info;
-
-  // ===== Percentages =====
-  const highPercent = (high / total) * 100;
-  const mediumPercent = (medium / total) * 100;
-  const lowPercent = (low / total) * 100;
-  const infoPercent = (info / total) * 100;
-
-  // ===== Donut Settings =====
-  const radius = 60;
-  const strokeWidth = 38;
-  const circumference = 2 * Math.PI * radius;
-  const gap = 8;
-
-  const highLength = (highPercent / 100) * circumference - gap;
-  const mediumLength = (mediumPercent / 100) * circumference - gap;
-  const lowLength = (lowPercent / 100) * circumference - gap;
-  const infoLength = (infoPercent / 100) * circumference - gap;
-
+  const { scanId: paramScanId } = useLocalSearchParams();
+  const router = useRouter();
+  const scanId = (paramScanId as string) || SCAN_ID;
   const screenWidth = Dimensions.get("window").width;
 
-  const [tooltip, setTooltip] = useState<any>(null);
+  const [scan, setScan] = useState<ScanDetails | null>(null);
+  const [vulnerabilities, setVulnerabilities] = useState<Vulnerability[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 10, total: 0, pages: 1 });
+  const [page, setPage] = useState(1);
+  const [scanLoading, setScanLoading] = useState(true);
+  const [vulnsLoading, setVulnsLoading] = useState(true);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>("All");
+  const [search, setSearch] = useState("");
 
-  const exposureData = {
-    labels: ["High", "Medium", "Low", "Info"],
-    datasets: [
-      {
-        data: [high, medium, low, info],
-        strokeWidth: 5,
-      },
-    ],
+  const fetchScan = async () => {
+    try {
+      setScanLoading(true);
+      const token = await AsyncStorage.getItem("access_token");
+      const res = await fetch(`${BASE_URL}/scan/${scanId}/result`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      setScan(json.data);
+    } catch (e: any) {
+      setScanError(e.message || "Failed to load scan");
+    } finally {
+      setScanLoading(false);
+    }
   };
+
+  const fetchVulns = async (p: number) => {
+    try {
+      setVulnsLoading(true);
+      const token = await AsyncStorage.getItem("access_token");
+      const res = await fetch(`${BASE_URL}/scan/${scanId}/vulnerabilities?page=${p}&limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      setVulnerabilities(json.data || []);
+      setPagination(json.pagination || { page: 1, limit: 10, total: 0, pages: 1 });
+    } catch (e) {
+      console.log("Vulns error:", e);
+    } finally {
+      setVulnsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchScan(); }, [scanId]);
+  useEffect(() => { fetchVulns(page); }, [scanId, page]);
+
+  const filteredVulns = useMemo(() => {
+    return vulnerabilities.filter((v) => {
+      const matchRisk = riskFilter === "All" || v.risk === riskFilter;
+      const matchSearch =
+        v.alert.toLowerCase().includes(search.toLowerCase()) ||
+        v.url.toLowerCase().includes(search.toLowerCase()) ||
+        v.param.toLowerCase().includes(search.toLowerCase());
+      return matchRisk && matchSearch;
+    });
+  }, [vulnerabilities, search, riskFilter]);
+
+  // ===== Loading =====
+  if (scanLoading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#00ffcc" />
+        <Text style={styles.loadingText}>LOADING SCAN REPORT...</Text>
+      </View>
+    );
+  }
+
+  // ===== Error =====
+  if (scanError || !scan) {
+    return (
+      <View style={styles.centered}>
+        <Ionicons name="warning-outline" size={40} color="#FF3B30" />
+        <Text style={styles.errorText}>{scanError || "Scan not found"}</Text>
+      </View>
+    );
+  }
+
+  const summary = scan.result.summary;
+  const total = summary.high + summary.medium + summary.low + summary.informational;
+  const getPercent = (v: number) => total ? Math.round((v / total) * 100) : 0;
+
+  const highPercent   = getPercent(summary.high);
+  const mediumPercent = getPercent(summary.medium);
+  const lowPercent    = getPercent(summary.low);
+  const infoPercent   = getPercent(summary.informational);
+
+  // Donut
+  const radius = 70;
+  const strokeWidth = 40;
+  const circumference = 2 * Math.PI * radius;
+  const gap = 6;
+  const highLen   = Math.max(0, (highPercent   / 100) * circumference - gap);
+  const medLen    = Math.max(0, (mediumPercent / 100) * circumference - gap);
+  const lowLen    = Math.max(0, (lowPercent    / 100) * circumference - gap);
+  const infoLen   = Math.max(0, (infoPercent   / 100) * circumference - gap);
+
+  const startResult = pagination.total === 0 ? 0 : (page - 1) * 10 + 1;
+  const endResult = Math.min(page * 10, pagination.total);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* ===== BOTTOM BOX ===== */}
-      <View style={styles.bottomBox}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Ionicons
-            name="pie-chart-outline"
-            size={20}
-            color="#66FFDD"
-            style={{ marginRight: 8 }}
-          />
-          <Text style={styles.sectionTitle}>
-            ALERTS <Text style={styles.accent}>RATIO</Text>
-          </Text>
+
+      {/* ===== BACK + TITLE ===== */}
+      <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={18} color="#888" />
+        <Text style={styles.backText}>Back to My Scans</Text>
+      </Pressable>
+
+      {/* ===== SCAN INFO ===== */}
+      <View style={styles.box}>
+        <View style={styles.scanTitleRow}>
+          <View>
+            <View style={styles.row}>
+              <Text style={styles.scanTitle}>Scan Report</Text>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusText}>{scan.status}</Text>
+              </View>
+            </View>
+            <View style={[styles.row, { marginTop: 10 }]}>
+              <Ionicons name="globe-outline" size={18} color="#00ffcc" />
+              <Text style={styles.targetText} numberOfLines={1}>{scan.target}</Text>
+            </View>
+          </View>
         </View>
 
-
-        {/* ===== DONUT ===== */}
-        <View style={styles.chartContainer}>
-          <Svg width={200} height={200}>
-            <Circle
-              cx="100"
-              cy="100"
-              r={radius}
-              stroke="#1E2A3A"
-              strokeWidth={strokeWidth}
-              fill="none"
-            />
-
-            <Circle
-              cx="100"
-              cy="100"
-              r={radius}
-              stroke="#FF3B30"
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeDasharray={`${highLength} ${circumference}`}
-              rotation="-90"
-              origin="100,100"
-            />
-
-            <Circle
-              cx="100"
-              cy="100"
-              r={radius}
-              stroke="#FF9500"
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeDasharray={`${mediumLength} ${circumference}`}
-              strokeDashoffset={-highLength - gap}
-              rotation="-90"
-              origin="100,100"
-            />
-
-            <Circle
-              cx="100"
-              cy="100"
-              r={radius}
-              stroke="#FFC107"
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeDasharray={`${lowLength} ${circumference}`}
-              strokeDashoffset={-(highLength + mediumLength + gap * 2)}
-              rotation="-90"
-              origin="100,100"
-            />
-
-            <Circle
-              cx="100"
-              cy="100"
-              r={radius}
-              stroke="#34C759" // أخضر للـ info
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeDasharray={`${infoLength} ${circumference}`}
-              strokeDashoffset={
-                -(highLength + mediumLength + lowLength + gap * 3)
-              }
-              rotation="-90"
-              origin="100,100"
-            />
-          </Svg>
-
-          <Text style={styles.legendText}>
-            🔴 HIGH 🟠 MEDIUM 🟡 LOW 🟢 INFO
-          </Text>
+        {/* Meta */}
+        <View style={[styles.box2, { marginTop: 16 }]}>
+          <View style={styles.metaGrid}>
+            {[
+              { label: "Scan Type", value: scan.scanType },
+              { label: "Status",    value: scan.status },
+              { label: "Started",   value: formatDate(scan.startedAt) },
+              { label: "Finished",  value: formatDate(scan.finishedAt) },
+              { label: "Duration",  value: scan.durationText || getDuration(scan.startedAt, scan.finishedAt) },
+            ].map((item) => (
+              <View key={item.label} style={styles.metaItem}>
+                <Text style={styles.metaLabel}>{item.label}</Text>
+                <Text style={styles.metaValue}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
         </View>
+      </View>
 
-        {/* ===== ALERT CARDS ===== */}
-        <AlertCard
-          title="HIGH ALERTS"
-          percent={Math.round(highPercent)}
-          color="#FF3B30"
-          count={3}
-        />
-        <AlertCard
-          title="MEDIUM ALERTS"
-          percent={Math.round(mediumPercent)}
-          color="#FF9500"
-          count={3}
-        />
-        <AlertCard
-          title="LOW ALERTS"
-          percent={Math.round(lowPercent)}
-          color="#FFC107"
-          count={2}
-        />
+      {/* ===== SUMMARY ===== */}
+      <View style={[styles.box, { marginTop: 16 }]}>
+        <Text style={styles.sectionTitle}>Summary</Text>
 
-        <AlertCard
-          title="INFO ALERTS"
-          percent={Math.round(infoPercent)}
-          color="#34C759"
-          count={info}
-        />
-        {/* ===== EXPOSURE OVER TIME ===== */}
-        <View style={styles.chartBox}>
-          <View style={styles.titleRow}>
-            <Ionicons
-              name="bar-chart-outline"
-              size={22}
-              color="#66FFDD"
-              style={{ marginRight: 8 }}
-            />
+        <SummaryCard title="Total Alerts" value={scan.result.summaryTotal} color="#a855f7" icon="shield-alert-outline" />
 
-            <Text style={styles.sectionTitle}>
-              VULNERABILITY EXPOSURE OVER TIME
+        <View style={styles.summaryGrid}>
+          <SummaryCard title="High"          value={summary.high}          color="#FF3B30" icon="shield-alert-outline" />
+          <SummaryCard title="Medium"        value={summary.medium}        color="#FF9500" icon="shield-alert-outline" />
+          <SummaryCard title="Low"           value={summary.low}           color="#34C759" icon="shield-checkmark-outline" />
+          <SummaryCard title="Informational" value={summary.informational} color="#00ffcc" icon="information-circle-outline" />
+        </View>
+      </View>
+
+      {/* ===== ALERT RATIO ===== */}
+      <View style={[styles.box, { marginTop: 16 }]}>
+        <View style={styles.ratioBadge}>
+          <Ionicons name="pie-chart-outline" size={16} color="#00ffcc" />
+          <Text style={styles.ratioBadgeText}>Alert Ratio</Text>
+        </View>
+        <Text style={styles.sectionTitle}>Vulnerability Risk Distribution</Text>
+        <Text style={styles.sectionSub}>Visual overview of all detected alerts grouped by severity level.</Text>
+
+        <View style={styles.ratioTopRow}>
+          <View style={styles.ratioTotalBox}>
+            <Text style={styles.ratioTotalLabel}>Total Alerts</Text>
+            <Text style={styles.ratioTotalValue}>{total}</Text>
+          </View>
+          <View style={[styles.ratioTotalBox, { borderColor: "#00ffcc40", backgroundColor: "#00ffcc15" }]}>
+            <Text style={styles.ratioTotalLabel}>Highest Ratio</Text>
+            <Text style={[styles.ratioTotalValue, { color: "#00ffcc" }]}>
+              {[
+                { short: "High",   value: summary.high },
+                { short: "Medium", value: summary.medium },
+                { short: "Low",    value: summary.low },
+                { short: "Info",   value: summary.informational },
+              ].reduce((max, item) => item.value > max.value ? item : max).short}
             </Text>
           </View>
+        </View>
 
-          <View style={[styles.chartWrapper, styles.fullWidthChart]}>
-            <Pressable
-              onPress={(event) => {
-                const { locationX } = event.nativeEvent;
-
-                const chartWidth = screenWidth - 40;
-                const data = exposureData.datasets[0].data;
-                const dataLength = data.length;
-
-                const step = chartWidth / dataLength;
-
-                let index = Math.floor(locationX / step);
-                if (index < 0) index = 0;
-                if (index > dataLength - 1) index = dataLength - 1;
-
-                const value = data[index];
-                const maxValue = Math.max(...data);
-                const chartHeight = 280;
-                const labelSpace = 30; // مساحة الأرقام تحت
-                const usableHeight = chartHeight - labelSpace;
-
-                const y = usableHeight - (value / maxValue) * usableHeight;
-
-                // const y =
-                //   chartHeight - (value / maxValue) * chartHeight;
-
-                setTooltip({
-                  label: exposureData.labels[index],
-                  value,
-                  x: index * step + step / 2,
-                  y,
-                });
-              }}
-              onPressOut={() => setTooltip(null)}
-            >
-              <LineChart
-                data={exposureData}
-                width={screenWidth - 40}
-                height={280}
-                withDots
-                withInnerLines={false}
-                withOuterLines={false}
-                withVerticalLines={false}
-                withHorizontalLines={true}
-                withShadow
-                fromZero={true}
-                chartConfig={{
-                  backgroundGradientFrom: "#0F1A2B",
-                  backgroundGradientTo: "#0F1A2B",
-                  decimalPlaces: 0,
-                  color: () => "#03c79d",
-                  labelColor: () => "#aaa", // خليها أفتح
-                  fillShadowGradient: "#00ffcc",
-                  fillShadowGradientOpacity: 0.35,
-                  propsForDots: {
-                    r: "4",
-                    strokeWidth: "1",
-                    stroke: "#00ffcc",
-                  },
-                }}
-                bezier
-                style={{ borderRadius: 0 }}
-              />
-            </Pressable>
-
-            {tooltip && (
-              <>
-                {/* Vertical Line */}
-                <View style={[styles.verticalLine, { left: tooltip.x }]} />
-
-                {/* Active Dot */}
-                <View
-                  style={[
-                    styles.activeDot,
-                    {
-                      left: tooltip.x - 6,
-                      top: tooltip.y - 6,
-                    },
-                  ]}
-                />
-
-                {/* Tooltip */}
-                <View
-                  style={[
-                    styles.tooltip,
-                    {
-                      left: tooltip.x - 60,
-                      top: tooltip.y - 70,
-                    },
-                  ]}
-                >
-                  <Text style={styles.tooltipLabel}>{tooltip.label}</Text>
-                  <Text style={styles.tooltipValue}>
-                    threats : {tooltip.value}
-                  </Text>
-                </View>
-              </>
+        {/* Donut */}
+        <View style={styles.donutContainer}>
+          <Svg width={220} height={220}>
+            <Circle cx="110" cy="110" r={radius} stroke="#1E2A3A" strokeWidth={strokeWidth} fill="none" />
+            {highLen > 0 && (
+              <Circle cx="110" cy="110" r={radius} stroke="#FF3B30" strokeWidth={strokeWidth} fill="none"
+                strokeDasharray={`${highLen} ${circumference}`} rotation="-90" origin="110,110" />
             )}
+            {medLen > 0 && (
+              <Circle cx="110" cy="110" r={radius} stroke="#FF9500" strokeWidth={strokeWidth} fill="none"
+                strokeDasharray={`${medLen} ${circumference}`}
+                strokeDashoffset={-(highLen + gap)} rotation="-90" origin="110,110" />
+            )}
+            {lowLen > 0 && (
+              <Circle cx="110" cy="110" r={radius} stroke="#34C759" strokeWidth={strokeWidth} fill="none"
+                strokeDasharray={`${lowLen} ${circumference}`}
+                strokeDashoffset={-(highLen + medLen + gap * 2)} rotation="-90" origin="110,110" />
+            )}
+            {infoLen > 0 && (
+              <Circle cx="110" cy="110" r={radius} stroke="#00ffcc" strokeWidth={strokeWidth} fill="none"
+                strokeDasharray={`${infoLen} ${circumference}`}
+                strokeDashoffset={-(highLen + medLen + lowLen + gap * 3)} rotation="-90" origin="110,110" />
+            )}
+          </Svg>
+          <View style={styles.donutCenter}>
+            <Text style={styles.donutTotal}>{total}</Text>
+            <Text style={styles.donutLabel}>TOTAL ALERTS</Text>
           </View>
         </View>
-      </View>
-            {/* ===== TOP BOX ===== */}
-      <View style={styles.topBox}>
-        <Text style={styles.sectionTitle}>RISK SUMMARY</Text>
 
-        <View style={[styles.card, styles.cardRed]}>
-          <Text style={styles.cardLabel}>HIGH</Text>
-          <Text style={styles.cardNumber}>{high}</Text>
-        </View>
-
-        <View style={[styles.card, styles.cardOrange]}>
-          <Text style={styles.cardLabel}>MEDIUM</Text>
-          <Text style={styles.cardNumber}>{medium}</Text>
-        </View>
-
-        <View style={[styles.card, styles.cardYellow]}>
-          <Text style={styles.cardLabel}>LOW</Text>
-          <Text style={styles.cardNumber}>{low}</Text>
-        </View>
-
-        <View style={[styles.card, styles.cardGreen]}>
-          <Text style={styles.cardLabel}>INFO</Text>
-          <Text style={styles.cardNumber}>{info}</Text>
+        {/* Ratio Cards */}
+        <View style={styles.ratioGrid}>
+          <AlertRatioCard label="High Alerts"          value={summary.high}          percent={highPercent}   color="#FF3B30" />
+          <AlertRatioCard label="Medium Alerts"        value={summary.medium}        percent={mediumPercent} color="#FF9500" />
+          <AlertRatioCard label="Low Alerts"           value={summary.low}           percent={lowPercent}    color="#34C759" />
+          <AlertRatioCard label="Informational Alerts" value={summary.informational} percent={infoPercent}   color="#00ffcc" />
         </View>
       </View>
-              <View style={styles.aiCard}>
-  <View style={styles.aiHeader}>
-    <View style={styles.aiIconBox}>
-      <Ionicons name="flash-outline" size={22} color="#0F1A2B" />
-    </View>
 
-    <View>
-      <Text style={styles.aiTitle}>AI INSIGHT</Text>
-      <Text style={styles.aiSub}>GENERATOR</Text>
-    </View>
-  </View>
+      {/* ===== VULNERABILITIES ===== */}
+      <View style={[styles.box, { marginTop: 16 }]}>
+        <Text style={styles.sectionTitle}>All Vulnerabilities</Text>
+        <Text style={styles.sectionSub}>Total: {pagination.total} vulnerabilities</Text>
 
-  <Text style={styles.aiDescription}>
-    Click the button below to generate a comprehensive technical report via
-    Black Cat AI.
-  </Text>
+        {/* Search */}
+        <View style={styles.searchBox}>
+          <Ionicons name="search-outline" size={16} color="#888" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search vulnerability..."
+            placeholderTextColor="#888"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
 
-  <Pressable style={styles.aiButton}>
-    <Text style={styles.aiButtonText}>GENERATE AI REPORT</Text>
-    <Ionicons name="chevron-forward" size={18} color="#0F1A2B" />
-  </Pressable>
+        {/* Risk Filter */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+          <View style={styles.filterRow}>
+            {(["All", "High", "Medium", "Low", "Informational"] as const).map((f) => (
+              <Pressable
+                key={f}
+                style={[styles.filterBtn, riskFilter === f && styles.filterBtnActive]}
+                onPress={() => { setRiskFilter(f); setPage(1); }}
+              >
+                <Text style={[styles.filterText, riskFilter === f && styles.filterTextActive]}>{f}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
 
-<View style={styles.aiFooter}>
-  <View style={styles.footerItem}>
-    <Text style={styles.footerLabel}>ACCURACY</Text>
-    <Text style={styles.footerValue}>98.3%</Text>
-  </View>
+        {/* Table Header */}
+        <View style={styles.tableHeader}>
+          <Text style={[styles.tableHeaderText, { flex: 1 }]}>RISK</Text>
+          <Text style={[styles.tableHeaderText, { flex: 3 }]}>VULNERABILITY</Text>
+          <Text style={[styles.tableHeaderText, { flex: 1 }]}>DATE</Text>
+        </View>
 
-  <View style={styles.footerItem}>
-    <Text style={styles.footerLabel}>CONFIDENCE</Text>
-    <Text style={styles.footerValue}>Very High</Text>
-  </View>
+        {/* Rows */}
+        {vulnsLoading ? (
+          <View style={styles.centered2}>
+            <ActivityIndicator color="#00ffcc" />
+            <Text style={{ color: "#888", marginTop: 8 }}>Loading vulnerabilities...</Text>
+          </View>
+        ) : filteredVulns.length === 0 ? (
+          <View style={styles.centered2}>
+            <Text style={{ color: "#888" }}>No vulnerabilities found</Text>
+          </View>
+        ) : (
+          filteredVulns.map((vuln) => <VulnRow key={vuln._id} vuln={vuln} />)
+        )}
 
-  <View style={styles.footerItem}>
-    <Text style={styles.footerLabel}>TIME</Text>
-    <Text style={styles.footerValue}>1800.7s</Text>
-  </View>
-</View>
+        {/* Pagination */}
+        <View style={styles.paginationContainer}>
+          <Text style={styles.paginationInfo}>
+            Showing {startResult} to {endResult} of {pagination.total} results
+          </Text>
 
-</View>
+          {pagination.pages > 1 && (
+            <View style={styles.paginationRow}>
+              <Pressable
+                style={[styles.pageBtn, page === 1 && styles.pageBtnDisabled]}
+                onPress={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={page === 1 || vulnsLoading}
+              >
+                <Ionicons name="chevron-back" size={16} color={page === 1 ? "#444" : "#fff"} />
+              </Pressable>
+
+              {Array.from({ length: Math.min(pagination.pages, 5) }, (_, i) => {
+                let p = i + 1;
+                if (pagination.pages > 5 && page > 3) p = page - 2 + i;
+                if (p > pagination.pages) return null;
+                return (
+                  <Pressable
+                    key={p}
+                    style={[styles.pageNumBtn, page === p && styles.pageNumBtnActive]}
+                    onPress={() => setPage(p)}
+                    disabled={vulnsLoading}
+                  >
+                    <Text style={[styles.pageNumText, page === p && styles.pageNumTextActive]}>{p}</Text>
+                  </Pressable>
+                );
+              })}
+
+              <Pressable
+                style={[styles.pageBtn, page === pagination.pages && styles.pageBtnDisabled]}
+                onPress={() => setPage((p) => Math.min(p + 1, pagination.pages))}
+                disabled={page === pagination.pages || vulnsLoading}
+              >
+                <Ionicons name="chevron-forward" size={16} color={page === pagination.pages ? "#444" : "#fff"} />
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* ===== AI INSIGHT ===== */}
+      <View style={[styles.aiCard, { marginTop: 16 }]}>
+        <View style={styles.aiHeader}>
+          <View style={styles.aiIconBox}>
+            <Ionicons name="sparkles-outline" size={22} color="#0F1A2B" />
+          </View>
+          <View>
+            <Text style={styles.aiTitle}>AI Generate Report</Text>
+          </View>
+        </View>
+
+        {["Generate All Vulnerabilities", "Generate High Only", "Generate Medium Only", "Generate Low Only"].map((title, index) => (
+          <View key={title} style={[styles.aiOption, index === 0 && styles.aiOptionActive]}>
+            <View style={[styles.aiRadio, index === 0 && styles.aiRadioActive]}>
+              {index === 0 && <View style={styles.aiRadioDot} />}
+            </View>
+            <View>
+              <Text style={styles.aiOptionTitle}>{title}</Text>
+              <Text style={styles.aiOptionSub}>Generate AI PDF report.</Text>
+            </View>
+          </View>
+        ))}
+
+        <Pressable style={styles.aiButton}>
+          <Ionicons name="flash-outline" size={20} color="#0F1A2B" />
+          <Text style={styles.aiButtonText}>Generate</Text>
+        </Pressable>
+      </View>
 
     </ScrollView>
   );
 }
 
-function AlertCard({ title, percent, color, count }: any) {
-  return (
-    <View style={styles.alertCard}>
-      <Text style={styles.alertTitle}>{title}</Text>
-
-      <View style={styles.row}>
-        <Text style={styles.percent}>{percent}%</Text>
-        <Text style={styles.count}>count: {count}</Text>
-      </View>
-
-      <View style={styles.progressBackground}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${percent}%`, backgroundColor: color },
-          ]}
-        />
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+  content: { padding: 16, paddingTop: 100, paddingBottom: 40 },
 
-  content: {
-    padding: 20,
-    paddingTop: 120,
-    paddingBottom: 40,
-  },
+  centered: { flex: 1, backgroundColor: "#070F1C", alignItems: "center", justifyContent: "center", gap: 16 },
+  centered2: { paddingVertical: 40, alignItems: "center" },
+  loadingText: { color: "#00ffcc", fontSize: 13, letterSpacing: 2, marginTop: 12 },
+  errorText: { color: "#FF3B30", fontSize: 14, marginTop: 10, textAlign: "center", paddingHorizontal: 30 },
 
-  topBox: {
-    backgroundColor: "#0F1A2B",
-    padding: 20,
-    borderRadius: 24,
-    marginBottom: 10,
-    marginTop: 30,
-  },
+  box: { backgroundColor: "#0F1A2B", padding: 20, borderRadius: 24, borderWidth: 1, borderColor: "#1E2A3A" },
+  box2: { backgroundColor: "#070F1C", padding: 16, borderRadius: 16 },
 
-  bottomBox: {
-    backgroundColor: "#0F1A2B",
-    padding: 20,
-    borderRadius: 24,
-  },
+  row: { flexDirection: "row", alignItems: "center", gap: 8 },
 
-  chartBox: {
-    marginTop: 30,
-  },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 16 },
+  backText: { color: "#888", fontWeight: "600" },
 
-  fullWidthChart: {
-    marginHorizontal: -20,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
+  scanTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  scanTitle: { color: "#fff", fontSize: 24, fontWeight: "800" },
+  statusBadge: { backgroundColor: "#34C75920", borderWidth: 1, borderColor: "#34C75950", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
+  statusText: { color: "#34C759", fontSize: 12, fontWeight: "700" },
+  targetText: { color: "#00ffcc", fontWeight: "700", flex: 1 },
 
-  sectionTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-    letterSpacing: 1,
-    marginBottom: 15,
-  },
+  metaGrid: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
+  metaItem: { minWidth: "45%", flex: 1 },
+  metaLabel: { color: "#666", fontSize: 12, fontWeight: "600", marginBottom: 4 },
+  metaValue: { color: "#fff", fontWeight: "700", fontSize: 13 },
 
-  accent: {
-    color: Colors.primary,
-  },
+  sectionTitle: { color: "#fff", fontSize: 20, fontWeight: "800", marginBottom: 6 },
+  sectionSub: { color: "#888", fontSize: 13, marginBottom: 16 },
 
-  card: {
-    borderWidth: 2,
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 15,
-  },
+  summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 },
+  summaryCard: { flex: 1, minWidth: "45%", borderWidth: 1.5, borderRadius: 20, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  summaryNumber: { fontSize: 32, fontWeight: "900" },
+  summaryLabel: { fontSize: 13, fontWeight: "700", marginTop: 2 },
 
-  cardRed: { borderColor: "#FF3B30" },
-  cardYellow: { borderColor: "#FFC107" },
-  cardGreen: { borderColor: "#34C759" },
-  cardOrange: { borderColor: "#FF9500" },
+  ratioBadge: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", backgroundColor: "#00ffcc15", borderWidth: 1, borderColor: "#00ffcc30", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, marginBottom: 12 },
+  ratioBadgeText: { color: "#00ffcc", fontSize: 11, fontWeight: "800", letterSpacing: 1 },
 
-  cardLabel: {
-    color: "#aaa",
-    marginBottom: 8,
-  },
+  ratioTopRow: { flexDirection: "row", gap: 12, marginBottom: 20 },
+  ratioTotalBox: { flex: 1, backgroundColor: "#1E2A3A", borderWidth: 1, borderColor: "#2A3A4A", borderRadius: 16, padding: 16 },
+  ratioTotalLabel: { color: "#888", fontSize: 12, fontWeight: "600" },
+  ratioTotalValue: { color: "#fff", fontSize: 28, fontWeight: "900", marginTop: 4 },
 
-  cardNumber: {
-    color: "#fff",
-    fontSize: 32,
-    fontWeight: "bold",
-  },
+  donutContainer: { alignItems: "center", justifyContent: "center", marginBottom: 20, position: "relative" },
+  donutCenter: { position: "absolute", alignItems: "center" },
+  donutTotal: { color: "#fff", fontSize: 36, fontWeight: "900" },
+  donutLabel: { color: "#888", fontSize: 10, letterSpacing: 1, fontWeight: "700" },
 
-  chartContainer: {
-    alignItems: "center",
-    marginBottom: 30,
-  },
+  ratioGrid: { gap: 12 },
+  ratioCard: { borderWidth: 1.5, borderRadius: 24, padding: 18 },
+  ratioCardHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 },
+  ratioIconBox: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  ratioLabel: { color: "#fff", fontWeight: "800", fontSize: 15 },
+  ratioSubLabel: { fontSize: 12, marginTop: 2 },
+  ratioValue: { fontSize: 30, fontWeight: "900" },
+  progressBg: { height: 14, backgroundColor: "#1E2A3A", borderRadius: 10, overflow: "hidden", borderWidth: 1, borderColor: "#2A3A4A" },
+  progressFill: { height: 14, borderRadius: 10 },
+  ratioFooter: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
+  ratioFooterLabel: { color: "#666", fontSize: 11, fontWeight: "800", letterSpacing: 1 },
+  ratioFooterValue: { fontSize: 13, fontWeight: "800" },
 
-  legendText: {
-    color: "#aaa",
-    marginTop: 15,
-  },
+  searchBox: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#070F1C", padding: 12, borderRadius: 14, marginBottom: 12, borderWidth: 1, borderColor: "#1E2A3A" },
+  searchInput: { flex: 1, color: "#fff", fontSize: 14 },
 
-  alertCard: {
-    backgroundColor: "#111C2E",
-    padding: 18,
-    borderRadius: 18,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "rgba(0, 255, 204, 0.25)",
-    shadowColor: "#00ffcc80",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 6,
-  },
+  filterRow: { flexDirection: "row", gap: 8 },
+  filterBtn: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: "#1E2A3A", backgroundColor: "#070F1C" },
+  filterBtnActive: { backgroundColor: "#00ffcc", borderColor: "#00ffcc" },
+  filterText: { color: "#888", fontWeight: "700", fontSize: 13 },
+  filterTextActive: { color: "#0F1A2B" },
 
-  alertTitle: {
-    color: "#888",
-    marginBottom: 10,
-  },
+  tableHeader: { flexDirection: "row", paddingHorizontal: 12, paddingVertical: 10, backgroundColor: "#070F1C", borderRadius: 10, marginBottom: 8 },
+  tableHeaderText: { color: "#666", fontSize: 11, fontWeight: "800", letterSpacing: 1 },
 
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  vulnRow: { backgroundColor: "#111C2E", borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: "#1E2A3A" },
+  vulnRowTop: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  riskBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
+  riskBadgeText: { fontSize: 11, fontWeight: "800" },
+  openBadge: { backgroundColor: "#FF3B3020", borderWidth: 1, borderColor: "#FF3B3040", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
+  openBadgeText: { color: "#FF3B30", fontSize: 11, fontWeight: "800" },
+  vulnAlert: { color: "#fff", fontWeight: "700", fontSize: 14, marginBottom: 4 },
+  vulnUrl: { color: "#888", fontSize: 12, marginBottom: 4 },
+  vulnParam: { color: "#666", fontSize: 11, marginBottom: 4 },
+  vulnDate: { color: "#555", fontSize: 11 },
 
-  percent: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "bold",
-  },
+  paginationContainer: { marginTop: 20, gap: 12 },
+  paginationInfo: { color: "#888", fontSize: 13, textAlign: "center" },
+  paginationRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" },
+  pageBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, borderColor: "#1E2A3A", backgroundColor: "#070F1C", alignItems: "center", justifyContent: "center" },
+  pageBtnDisabled: { opacity: 0.4 },
+  pageNumBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, borderColor: "#1E2A3A", backgroundColor: "#070F1C", alignItems: "center", justifyContent: "center" },
+  pageNumBtnActive: { backgroundColor: "#00ffcc", borderColor: "#00ffcc" },
+  pageNumText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  pageNumTextActive: { color: "#0F1A2B" },
 
-  count: {
-    color: "#999",
-  },
-
-  progressBackground: {
-    height: 8,
-    backgroundColor: "#1E2A3A",
-    borderRadius: 10,
-    marginTop: 12,
-  },
-
-  progressFill: {
-    height: 8,
-    borderRadius: 10,
-  },
-  chartWrapper: {
-    position: "relative",
-  },
-
-  tooltip: {
-    position: "absolute",
-    backgroundColor: "#111C2E",
-    padding: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#00ffcc",
-  },
-
-  tooltipLabel: {
-    color: "#888",
-    fontSize: 12,
-  },
-
-  tooltipValue: {
-    color: "#00ffcc",
-    fontWeight: "bold",
-    fontSize: 14,
-  },
-
-  verticalLine: {
-    position: "absolute",
-    width: 1,
-    height: 250,
-    backgroundColor: "rgba(255,255,255,0.4)",
-  },
-
-  activeDot: {
-    position: "absolute",
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#00ffcc",
-    borderWidth: 2,
-    borderColor: "#0F1A2B",
-    shadowColor: "#00ffcc",
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  aiCard: {
-  marginTop: 30,
-  backgroundColor: "#0F1A2B",
-  borderRadius: 28,
-  padding: 22,
-  borderWidth: 1.5,
-  borderColor: "#00ffcc",
-},
-
-aiHeader: {
-  flexDirection: "row",
-  alignItems: "center",
-  marginBottom: 18,
-},
-
-aiIconBox: {
-  width: 48,
-  height: 48,
-  borderRadius: 16,
-  backgroundColor: "#66FFDD",
-  alignItems: "center",
-  justifyContent: "center",
-  marginRight: 14,
-},
-
-aiTitle: {
-  color: "#fff",
-  fontSize: 18,
-  fontWeight: "bold",
-},
-
-aiSub: {
-  color: "#00ffcc",
-  fontSize: 12,
-  letterSpacing: 2,
-},
-
-aiDescription: {
-  color: "#9CA3AF",
-  lineHeight: 20,
-  marginBottom: 22,
-},
-
-aiButton: {
-  backgroundColor: "#66FFDD",
-  paddingVertical: 16,
-  borderRadius: 18,
-  flexDirection: "row",
-  justifyContent: "center",
-  alignItems: "center",
-  marginBottom: 25,
-},
-
-aiButtonText: {
-  color: "#0F1A2B",
-  fontWeight: "bold",
-  marginRight: 6,
-},
-
-aiFooter: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-},
-footerItem: {
-  alignItems: "center",
-  flex: 1,
-},
-
-footerLabel: {
-  color: "#888",
-  fontSize: 12,
-  marginBottom: 4,
-},
-
-footerValue: {
-  color: "#fff",
-  fontSize: 18,
-  fontWeight: "bold",
-},
-
-chatCircle: {
-  width: 50,
-  height: 50,
-  borderRadius: 25,
-  backgroundColor: "#66FFDD",
-  alignItems: "center",
-  justifyContent: "center",
-},
-
+  aiCard: { backgroundColor: "#0F1A2B", borderRadius: 28, padding: 22, borderWidth: 1.5, borderColor: "#00ffcc40" },
+  aiHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 },
+  aiIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: "#66FFDD", alignItems: "center", justifyContent: "center" },
+  aiTitle: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  aiOption: { flexDirection: "row", alignItems: "flex-start", gap: 12, borderWidth: 1, borderColor: "#1E2A3A", borderRadius: 16, padding: 14, marginBottom: 10, backgroundColor: "#070F1C" },
+  aiOptionActive: { borderColor: "#00ffcc", backgroundColor: "#00ffcc15" },
+  aiRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: "#666", alignItems: "center", justifyContent: "center", marginTop: 2 },
+  aiRadioActive: { borderColor: "#00ffcc" },
+  aiRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#00ffcc" },
+  aiOptionTitle: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  aiOptionSub: { color: "#888", fontSize: 12, marginTop: 4 },
+  aiButton: { backgroundColor: "#66FFDD", paddingVertical: 16, borderRadius: 16, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 8 },
+  aiButtonText: { color: "#0F1A2B", fontWeight: "800", fontSize: 15 },
 });

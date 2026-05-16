@@ -1,7 +1,6 @@
 import { Colors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import AuthLayout from "./AuthLayout";
 
@@ -14,34 +13,24 @@ import {
   View,
 } from "react-native";
 
-export default function Login() {
+export default function ConfirmEmail() {
   const router = useRouter();
+  const { email } = useLocalSearchParams<{ email: string }>();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  const handleLogin = async () => {
-    if (!emailRegex.test(email)) {
-      Alert.alert("Invalid Email", "Please enter a valid email");
-      return;
-    }
-
-    if (!password.trim()) {
-      Alert.alert("Missing Password", "Please enter your password");
+  const handleConfirm = async () => {
+    if (!otp.trim() || otp.length < 4) {
+      Alert.alert("Invalid OTP", "Please enter the OTP sent to your email");
       return;
     }
 
     try {
       setLoading(true);
 
-      const fcmToken = (await AsyncStorage.getItem("fcm_token")) ?? "";
-
       const response = await fetch(
-        "https://black-cat.up.railway.app/auth/login",
+        "https://black-cat.up.railway.app/auth/confirm-email",
         {
           method: "POST",
           headers: {
@@ -49,10 +38,9 @@ export default function Login() {
           },
           body: JSON.stringify({
             email: email,
-            password: password,
-            FCM: fcmToken,
+            OTP: otp,
           }),
-        },
+        }
       );
 
       const data = await response.json();
@@ -62,19 +50,14 @@ export default function Login() {
 
       if (!response.ok) {
         Alert.alert(
-          "Login Failed",
-          data.err_message || data.message || "Invalid credentials",
+          "Verification Failed",
+          data.err_message || data.message || "Invalid OTP"
         );
         return;
       }
 
-      const { access_token, refresh_token } = data.data.credentials;
-      await AsyncStorage.setItem("access_token", access_token);
-      await AsyncStorage.setItem("refresh_token", refresh_token);
-      await AsyncStorage.setItem("login_date", Date.now().toString());
-
-      Alert.alert("Success", "Welcome back to Black Cat");
-      router.replace("/tools/dashboard");
+      Alert.alert("Success", "Email verified! You can now login");
+      router.replace("/auth/login");
     } catch (error) {
       console.log(error);
       Alert.alert("Network Error", "Could not connect to server");
@@ -92,79 +75,55 @@ export default function Login() {
         </Text>
 
         <Text style={styles.title}>
-          ACCESS THE <Text style={styles.accent}>COMMAND CENTER</Text>
+          VERIFY YOUR <Text style={styles.accent}>IDENTITY</Text>
         </Text>
 
-        <Text style={styles.sub}>Secure authentication required</Text>
+        <Text style={styles.sub}>
+          Enter the OTP sent to{"\n"}
+          <Text style={styles.accent}>{email}</Text>
+        </Text>
       </View>
 
       {/* CARD */}
       <View style={styles.card}>
-        {/* EMAIL */}
-        <Text style={styles.label}>COMMAND CENTER EMAIL</Text>
+        <Text style={styles.label}>VERIFICATION CODE</Text>
 
         <View style={styles.input}>
           <Ionicons
-            name="mail-outline"
+            name="key-outline"
             size={18}
             color={Colors.textSecondary}
           />
           <TextInput
-            placeholder="contact@hq.security"
+            placeholder="Enter OTP"
             placeholderTextColor={Colors.textSecondary}
             style={styles.inputText}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
+            value={otp}
+            onChangeText={setOtp}
+            keyboardType="number-pad"
+            maxLength={6}
           />
-        </View>
-
-        {/* PASSWORD */}
-        <Text style={styles.label}>ENCRYPTION SECRET</Text>
-
-        <View style={styles.input}>
-          <Ionicons
-            name="lock-closed-outline"
-            size={18}
-            color={Colors.textSecondary}
-          />
-          <TextInput
-            secureTextEntry={!showPassword}
-            placeholder="Enter your password"
-            placeholderTextColor={Colors.textSecondary}
-            style={styles.inputText}
-            value={password}
-            onChangeText={setPassword}
-          />
-          <Pressable onPress={() => setShowPassword((prev) => !prev)}>
-            <Ionicons
-              name={showPassword ? "eye-off-outline" : "eye-outline"}
-              size={18}
-              color={Colors.textSecondary}
-            />
-          </Pressable>
         </View>
 
         {/* BUTTON */}
         <Pressable
           style={[styles.button, loading && { opacity: 0.7 }]}
-          onPress={handleLogin}
+          onPress={handleConfirm}
           disabled={loading}
         >
           <Text style={styles.buttonText}>
-            {loading ? "AUTHENTICATING..." : "ACCESS DASHBOARD"}
+            {loading ? "VERIFYING..." : "CONFIRM IDENTITY"}
           </Text>
         </Pressable>
 
         {/* FOOTER */}
         <Text style={styles.footer}>
-          New to Black Cat?{" "}
+          Already verified?{" "}
           <Text
             style={styles.accent}
-            onPress={() => router.push("/auth/register")}
+            onPress={() => router.replace("/auth/login")}
           >
-            CREATE ACCOUNT
+            GO TO LOGIN
           </Text>
         </Text>
       </View>
@@ -173,12 +132,6 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    backgroundColor: Colors.background,
-    padding: 20,
-    alignItems: "center",
-  },
   header: {
     marginTop: 40,
     alignItems: "center",
@@ -202,6 +155,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: Colors.textSecondary,
     textAlign: "center",
+    lineHeight: 22,
   },
   card: {
     marginTop: 40,
@@ -230,6 +184,8 @@ const styles = StyleSheet.create({
   inputText: {
     flex: 1,
     color: Colors.textPrimary,
+    fontSize: 20,
+    letterSpacing: 8,
   },
   button: {
     backgroundColor: Colors.primary,

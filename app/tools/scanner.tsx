@@ -15,7 +15,9 @@ export default function Scanner() {
   const [url, setUrl] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const router = useRouter();
-
+const [sidebarOpen, setSidebarOpen] =
+    useState(false);
+    
   const handleScan = () => {
     if (!url) {
       Alert.alert("Missing Target", "Please enter a valid target URL.");
@@ -31,6 +33,7 @@ export default function Scanner() {
     setUrl("");
   };
   return (
+    <View style={{ flex: 1, flexDirection: "row" }}>
     <View style={styles.container}>
       <View style={styles.centerWrapper}>
         <View style={styles.terminalBox}>
@@ -83,6 +86,7 @@ export default function Scanner() {
           </Pressable>
         </View>
       </View>
+    </View>
     </View>
   );
 }

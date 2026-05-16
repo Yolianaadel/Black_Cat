@@ -1,7 +1,7 @@
 import { Colors } from "@/constants/colors";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
   onClose: () => void;
@@ -16,26 +16,19 @@ export default function SideMenu({ onClose }: Props) {
         <View style={styles.top}>
           <View style={styles.logoRow}>
             <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <MaterialCommunityIcons
-                name="shield-outline"
-                size={26}
-                color="#00ffcc"
+              <Image
+                source={require("../assets/images/logoo.png")}
+                style={styles.logoImage}
               />
-              <MaterialCommunityIcons
-                name="cat"
-                size={20}
-                color="#00ffcc"
-                style={{ marginLeft: -18 }}
-              />
-            </View>
 
-            <Text style={styles.logo}>
-              BLACK<Text style={styles.accent}>CAT</Text>
-            </Text>
+              <Text style={styles.logoText}>BLACK CAT</Text>
+            </View>
           </View>
 
           <Pressable onPress={onClose}>
-            <Text style={styles.close}>✕</Text>
+            <Text style={styles.close}>✕
+
+            </Text>
           </Pressable>
         </View>
 
@@ -50,6 +43,48 @@ export default function SideMenu({ onClose }: Props) {
           <Ionicons name="home-outline" size={18} color={Colors.primary} />
           <Text style={styles.item}>Home</Text>
         </Pressable>
+        <Pressable
+          style={styles.itemRow}
+          onPress={() => {
+            onClose();
+            router.push("/tools/dataleak");
+          }}
+        >
+          <MaterialCommunityIcons
+            name="shield-alert-outline"
+            size={18}
+            color={Colors.textPrimary}
+          />
+          <Text style={styles.item}>Data Leak</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.itemRow}
+          onPress={() => {
+            onClose();
+            router.push("/tools/malware");
+          }}
+        >
+          <Ionicons name="phone-portrait-outline" size={18}
+            color={Colors.textPrimary} />
+
+          <Text style={styles.item}>Malware Detection</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.itemRow}
+          onPress={() => {
+            onClose();
+            router.push("/ai/assistant");
+          }}
+        >
+          <MaterialCommunityIcons
+            name="robot-outline"
+            size={18}
+            color={Colors.textPrimary}
+          />
+          <Text style={styles.item}>AI Assistant</Text>
+        </Pressable>
 
         <Pressable
           style={styles.itemRow}
@@ -58,11 +93,7 @@ export default function SideMenu({ onClose }: Props) {
             router.push("/tools/scanner");
           }}
         >
-          <Ionicons
-            name="scan-outline"
-            size={18}
-            color={Colors.textPrimary}
-          />
+          <Ionicons name="scan-outline" size={18} color={Colors.textPrimary} />
           <Text style={styles.item}>Scanner</Text>
         </Pressable>
 
@@ -204,5 +235,21 @@ const styles = StyleSheet.create({
     color: "#00382C",
     fontWeight: "600",
     letterSpacing: 1,
+  },
+  logoImage: {
+    width: 40,
+    height: 40,
+    resizeMode: "contain",
+    borderRadius: 20,
+  },
+
+  logoText: {
+    color: Colors.primary,
+    textShadowColor: Colors.primary,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+    fontSize: 20,
+    fontWeight: "bold",
+    marginLeft: 5,
   },
 });
