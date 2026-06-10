@@ -59,7 +59,7 @@ export default function Login() {
 
       console.log("STATUS:", response.status);
       console.log("DATA:", data);
-
+      
       if (!response.ok) {
         Alert.alert(
           "Login Failed",
@@ -72,6 +72,8 @@ export default function Login() {
       await AsyncStorage.setItem("access_token", access_token);
       await AsyncStorage.setItem("refresh_token", refresh_token);
       await AsyncStorage.setItem("login_date", Date.now().toString());
+      await AsyncStorage.setItem("user_email", email); 
+
 
       Alert.alert("Success", "Welcome back to Black Cat");
       router.replace("/tools/dashboard");

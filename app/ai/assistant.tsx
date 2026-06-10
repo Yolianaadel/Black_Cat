@@ -1,5 +1,5 @@
 import { Colors } from "@/constants/colors";
-import { Ionicons , MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -532,23 +532,23 @@ const styles = StyleSheet.create({
     borderRightColor: "rgba(0,255,204,0.08)",
   },
   closeBtn: {
-  alignSelf: "flex-end",
+    alignSelf: "flex-end",
 
-  width: 38,
-  height: 38,
-  borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
 
-  backgroundColor: "rgba(255,255,255,0.05)",
-  borderWidth: 1,
-  borderColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
 
-  justifyContent: "center",
-  alignItems: "center",
+    justifyContent: "center",
+    alignItems: "center",
 
-  marginTop: 60,
-  marginBottom: 16,
-},
-  
+    marginTop: 60,
+    marginBottom: 16,
+  },
+
   aiCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    paddingTop: 28,
+    paddingTop: 30,
   },
   menuSquareBtn: {
     width: 42,
@@ -705,6 +705,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 16,
+    paddingTop: 8,
   },
   backHomeTxt: { color: "#CBD5E1", fontSize: 14, fontWeight: "500" },
 
