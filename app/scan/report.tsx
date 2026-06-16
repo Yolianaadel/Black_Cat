@@ -1,15 +1,15 @@
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
   Linking,
-  StyleSheet,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
 
 // ─── Icon component ────────────────────────────────────────────────────────────
 // Swap this out for @expo/vector-icons when ready:
@@ -24,25 +24,25 @@ const Icon = ({
   color?: string;
 }) => {
   const icons: Record<string, string> = {
-    ArrowLeft:     "←",
-    ShieldCheck:   "🛡",
-    Globe:         "🌐",
-    Activity:      "📊",
-    Calendar:      "📅",
-    Clock:         "🕐",
-    Sparkles:      "✨",
-    ExternalLink:  "↗",
-    FileText:      "📄",
+    ArrowLeft: "←",
+    ShieldCheck: "🛡",
+    Globe: "🌐",
+    Activity: "📊",
+    Calendar: "📅",
+    Clock: "🕐",
+    Sparkles: "✨",
+    ExternalLink: "↗",
+    FileText: "📄",
     AlertTriangle: "⚠️",
-    ShieldAlert:   "🔔",
-    Info:          "ℹ️",
-    CheckCircle2:  "✅",
-    XCircle:       "❌",
-    Circle:        "⭕",
-    Loader2:       "⏳",
-    Trash2:        "🗑",
-    FileDown:      "📥",
-    ArrowRight:    "→",
+    ShieldAlert: "🔔",
+    Info: "ℹ️",
+    CheckCircle2: "✅",
+    XCircle: "❌",
+    Circle: "⭕",
+    Loader2: "⏳",
+    Trash2: "🗑",
+    FileDown: "📥",
+    ArrowRight: "→",
   };
   return (
     <Text style={{ fontSize: size, color, lineHeight: size * 1.4 }}>
@@ -53,7 +53,7 @@ const Icon = ({
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type ReportStatus = "PROCESSING" | "COMPLETED" | "FAILED" | "PENDING";
-type ReportType   = "All" | "High" | "Medium" | "Low" | "Informational";
+type ReportType = "All" | "High" | "Medium" | "Low" | "Informational";
 
 interface Report {
   _id: string;
@@ -80,7 +80,12 @@ interface ScanDetails {
   durationText?: string;
   failureReason: string | null;
   result: {
-    summary: { high: number; medium: number; low: number; informational: number };
+    summary: {
+      high: number;
+      medium: number;
+      low: number;
+      informational: number;
+    };
     baseUrl: string;
     alertsCount: number;
     summaryTotal: number;
@@ -89,10 +94,10 @@ interface ScanDetails {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 const reportDescriptions: Record<ReportType, string> = {
-  All:           "Comprehensive overview of all vulnerabilities and risks.",
-  High:          "Detailed report for high severity vulnerabilities.",
-  Medium:        "Detailed report for medium severity vulnerabilities.",
-  Low:           "Detailed report for low severity vulnerabilities.",
+  All: "Comprehensive overview of all vulnerabilities and risks.",
+  High: "Detailed report for high severity vulnerabilities.",
+  Medium: "Detailed report for medium severity vulnerabilities.",
+  Low: "Detailed report for low severity vulnerabilities.",
   Informational: "Informational findings and best practice suggestions.",
 };
 
@@ -107,30 +112,36 @@ const formatGenerationTime = (ms: number | null) => {
   if (!ms) return "-";
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
-  const rest    = seconds % 60;
+  const rest = seconds % 60;
   return minutes === 0 ? `${rest}s` : `${minutes}m ${rest}s`;
 };
 
 // ─── Color maps ─────────────────────────────────────────────────────────────────
-const riskColors: Record<ReportType, { border: string; bg: string; text: string }> = {
-  High:          { border: "#ef444460", bg: "#ef44440d", text: "#fca5a5" },
-  Medium:        { border: "#f9731660", bg: "#f973160d", text: "#fdba74" },
-  Low:           { border: "#eab30860", bg: "#eab3080d", text: "#fde047" },
+const riskColors: Record<
+  ReportType,
+  { border: string; bg: string; text: string }
+> = {
+  High: { border: "#ef444460", bg: "#ef44440d", text: "#fca5a5" },
+  Medium: { border: "#f9731660", bg: "#f973160d", text: "#fdba74" },
+  Low: { border: "#eab30860", bg: "#eab3080d", text: "#fde047" },
   Informational: { border: "#3b82f660", bg: "#3b82f60d", text: "#93c5fd" },
-  All:           { border: "#a855f760", bg: "#a855f70d", text: "#d8b4fe" },
+  All: { border: "#a855f760", bg: "#a855f70d", text: "#d8b4fe" },
 };
 
-const statusColors: Record<ReportStatus, { border: string; bg: string; text: string }> = {
-  COMPLETED:  { border: "#10b98160", bg: "#10b9810d", text: "#6ee7b7" },
+const statusColors: Record<
+  ReportStatus,
+  { border: string; bg: string; text: string }
+> = {
+  COMPLETED: { border: "#10b98160", bg: "#10b9810d", text: "#6ee7b7" },
   PROCESSING: { border: "#eab30860", bg: "#eab3080d", text: "#fde047" },
-  FAILED:     { border: "#ef444460", bg: "#ef44440d", text: "#fca5a5" },
-  PENDING:    { border: "#64748b60", bg: "#64748b0d", text: "#cbd5e1" },
+  FAILED: { border: "#ef444460", bg: "#ef44440d", text: "#fca5a5" },
+  PENDING: { border: "#64748b60", bg: "#64748b0d", text: "#cbd5e1" },
 };
 
 const scanStatusColor = (status?: string) => {
   const v = status?.toLowerCase();
   if (v === "completed") return statusColors.COMPLETED;
-  if (v === "failed")    return statusColors.FAILED;
+  if (v === "failed") return statusColors.FAILED;
   if (["scanning", "processing", "preparing"].includes(v ?? ""))
     return statusColors.PROCESSING;
   return statusColors.PENDING;
@@ -138,23 +149,22 @@ const scanStatusColor = (status?: string) => {
 
 // ─── Real API imports ──────────────────────────────────────────────────────────
 // ✅ استبدل الـ paths دي بالمسارات الصح عندك:
-import { getScanResult }                  from "../services/ScanReportApi";
-import { getReportsByScan, deleteReport } from "../services/ReportApi";
+import { deleteReport, getReportsByScan } from "../services/ReportApi";
+import { getScanResult } from "../services/ScanReportApi";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function ScanReports() {
-  const router        = useRouter();
-const scanId = "6a1930194da0337829c58e65"; // ← حط الـ ID بتاعك هنا
+  const router = useRouter();
+  const { scanId } = useLocalSearchParams<{ scanId: string }>();
 
-
-  const [scan, setScan]             = useState<ScanDetails | null>(null);
-  const [reports, setReports]       = useState<Report[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [scan, setScan] = useState<ScanDetails | null>(null);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg]     = useState("");
-  const [toast, setToast]           = useState<{
+  const [errorMsg, setErrorMsg] = useState("");
+  const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
   } | null>(null);
@@ -181,8 +191,8 @@ const scanId = "6a1930194da0337829c58e65"; // ← حط الـ ID بتاعك هن
     } catch (err: any) {
       setErrorMsg(
         err?.response?.data?.message ||
-        err?.response?.data?.err_message ||
-        "Failed to load scan reports",
+          err?.response?.data?.err_message ||
+          "Failed to load scan reports",
       );
     } finally {
       setLoading(false);
@@ -194,12 +204,15 @@ const scanId = "6a1930194da0337829c58e65"; // ← حط الـ ID بتاعك هن
       setDeletingId(reportId);
       const res = await deleteReport(reportId);
       setReports((prev) => prev.filter((r) => r._id !== reportId));
-      showToast(res?.data?.message || "Report deleted successfully.", "success");
+      showToast(
+        res?.data?.message || "Report deleted successfully.",
+        "success",
+      );
     } catch (err: any) {
       showToast(
         err?.response?.data?.err_message ||
-        err?.response?.data?.message ||
-        "Failed to delete report.",
+          err?.response?.data?.message ||
+          "Failed to delete report.",
         "error",
       );
     } finally {
@@ -207,7 +220,9 @@ const scanId = "6a1930194da0337829c58e65"; // ← حط الـ ID بتاعك هن
     }
   };
 
-  useEffect(() => { fetchData(); }, [scanId]);
+  useEffect(() => {
+    fetchData();
+  }, [scanId]);
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (loading) {
@@ -244,7 +259,7 @@ const scanId = "6a1930194da0337829c58e65"; // ← حط الـ ID بتاعك هن
           onPress={() => router.push("/scan/history")}
         >
           <Icon name="ArrowLeft" size={16} color="#22d3ee" />
-          <Text style={s.backBtnText}>  Back to Scans</Text>
+          <Text style={s.backBtnText}> Back to Scans</Text>
         </TouchableOpacity>
 
         {/* Error banner */}
@@ -258,10 +273,14 @@ const scanId = "6a1930194da0337829c58e65"; // ← حط الـ ID بتاعك هن
         {scan !== null && (
           <ScanCard
             scan={scan}
-            onViewDetails={() => router.push(`/scan/${scanId}/report`)}
+            onViewDetails={() =>
+              router.push({
+                pathname: "/tools/dashboard",
+                params: { scanId: scanId },
+              })
+            }
           />
         )}
-
         {/* Heading */}
         <View style={s.headingRow}>
           <Text style={s.sectionTitle}>AI Reports</Text>
@@ -324,7 +343,9 @@ function ScanCard({
           <View style={[s.row, { marginTop: 4 }]}>
             <Icon name="Globe" size={13} color="#64748b" />
             <Text style={[s.metaText, { marginLeft: 4 }]} numberOfLines={1}>
-              {scan.result?.baseUrl || scan.target}
+              {scan.result?.baseUrl
+                ? scan.result.baseUrl
+                : (scan.target ?? "")}{" "}
             </Text>
           </View>
         </View>
@@ -333,12 +354,17 @@ function ScanCard({
       {/* View details */}
       <TouchableOpacity style={s.cyanBtn} onPress={onViewDetails}>
         <Icon name="ExternalLink" size={14} color="#22d3ee" />
-        <Text style={s.cyanBtnText}>  View Scan Details</Text>
+        <Text style={s.cyanBtnText}> View Scan Details</Text>
       </TouchableOpacity>
 
       {/* Meta grid */}
       <View style={s.metaGrid}>
-        <MetaItem icon="Activity"    label="Scan Type"    value={scan.scanType} capitalize />
+        <MetaItem
+          icon="Activity"
+          label="Scan Type"
+          value={scan.scanType}
+          capitalize
+        />
         <MetaItem
           icon="ShieldCheck"
           label="Status"
@@ -346,9 +372,21 @@ function ScanCard({
           badge
           badgeColors={sc}
         />
-        <MetaItem icon="Calendar" label="Started At"   value={formatDate(scan.startedAt)} />
-        <MetaItem icon="Clock"    label="Duration"     value={scan.durationText ?? "-"} />
-        <MetaItem icon="Sparkles" label="Total Alerts" value={String(scan.result?.summaryTotal ?? 0)} />
+        <MetaItem
+          icon="Calendar"
+          label="Started At"
+          value={formatDate(scan.startedAt)}
+        />
+        <MetaItem
+          icon="Clock"
+          label="Duration"
+          value={scan.durationText ?? "-"}
+        />
+        <MetaItem
+          icon="Sparkles"
+          label="Total Alerts"
+          value={String(scan.result?.summaryTotal ?? 0)}
+        />
       </View>
     </View>
   );
@@ -381,17 +419,22 @@ function MetaItem({
           style={[
             s.badge,
             {
-              borderColor:     badgeColors.border,
+              borderColor: badgeColors.border,
               backgroundColor: badgeColors.bg,
-              marginTop:       4,
+              marginTop: 4,
             },
           ]}
         >
-          <Text style={[s.badgeText, { color: badgeColors.text }]}>{value}</Text>
+          <Text style={[s.badgeText, { color: badgeColors.text }]}>
+            {value}
+          </Text>
         </View>
       ) : (
         <Text
-          style={[s.metaValue, capitalize ? { textTransform: "capitalize" } : {}]}
+          style={[
+            s.metaValue,
+            capitalize ? { textTransform: "capitalize" } : {},
+          ]}
         >
           {value}
         </Text>
@@ -410,17 +453,24 @@ function ReportCard({
   isDeleting: boolean;
   onDelete: () => void;
 }) {
-  const risk   = riskColors[report.typeOfRisk];
+  const risk = riskColors[report.typeOfRisk];
   const status = statusColors[report.status];
 
   const riskIconName =
-    report.typeOfRisk === "High"   ? "AlertTriangle" :
-    report.typeOfRisk === "All"    ? "FileText"      : "Info";
+    report.typeOfRisk === "High"
+      ? "AlertTriangle"
+      : report.typeOfRisk === "All"
+        ? "FileText"
+        : "Info";
 
   const statusIconName =
-    report.status === "COMPLETED"  ? "CheckCircle2" :
-    report.status === "PROCESSING" ? "Loader2"      :
-    report.status === "FAILED"     ? "XCircle"      : "Circle";
+    report.status === "COMPLETED"
+      ? "CheckCircle2"
+      : report.status === "PROCESSING"
+        ? "Loader2"
+        : report.status === "FAILED"
+          ? "XCircle"
+          : "Circle";
 
   return (
     <View style={[s.reportCard, isDeleting ? { opacity: 0.4 } : {}]}>
@@ -444,7 +494,12 @@ function ReportCard({
 
           {/* Risk & status badges */}
           <View style={s.badgesRow}>
-            <View style={[s.badge, { borderColor: risk.border, backgroundColor: risk.bg }]}>
+            <View
+              style={[
+                s.badge,
+                { borderColor: risk.border, backgroundColor: risk.bg },
+              ]}
+            >
               <Text style={[s.badgeText, { color: risk.text }]}>
                 {report.typeOfRisk === "All" ? "All Risks" : report.typeOfRisk}
               </Text>
@@ -454,11 +509,17 @@ function ReportCard({
               style={[
                 s.badge,
                 s.row,
-                { borderColor: status.border, backgroundColor: status.bg, marginLeft: 6 },
+                {
+                  borderColor: status.border,
+                  backgroundColor: status.bg,
+                  marginLeft: 6,
+                },
               ]}
             >
               <Icon name={statusIconName} size={11} color={status.text} />
-              <Text style={[s.badgeText, { color: status.text, marginLeft: 4 }]}>
+              <Text
+                style={[s.badgeText, { color: status.text, marginLeft: 4 }]}
+              >
                 {report.status}
               </Text>
             </View>
@@ -484,12 +545,12 @@ function ReportCard({
             onPress={() => Linking.openURL(report.fileUrl!)}
           >
             <Icon name="ExternalLink" size={14} color="#d8b4fe" />
-            <Text style={s.pdfBtnText}>  Open PDF</Text>
+            <Text style={s.pdfBtnText}> Open PDF</Text>
           </TouchableOpacity>
         ) : (
           <View style={s.pdfBtnDisabled}>
             <Icon name="FileDown" size={14} color="#475569" />
-            <Text style={s.pdfBtnDisabledText}>  Open PDF</Text>
+            <Text style={s.pdfBtnDisabledText}> Open PDF</Text>
           </View>
         )}
 
@@ -503,7 +564,7 @@ function ReportCard({
           ) : (
             <Icon name="Trash2" size={14} color="#fca5a5" />
           )}
-          <Text style={s.deleteBtnText}>  Delete</Text>
+          <Text style={s.deleteBtnText}> Delete</Text>
         </TouchableOpacity>
       </View>
 
@@ -519,19 +580,19 @@ function ReportCard({
 function HowItWorks() {
   const steps = [
     {
-      num:   "1",
+      num: "1",
       title: "Choose report type",
-      desc:  "Select the type of risk you want to include.",
+      desc: "Select the type of risk you want to include.",
     },
     {
-      num:   "2",
+      num: "2",
       title: "AI is generating",
-      desc:  "We analyze the findings and create your report.",
+      desc: "We analyze the findings and create your report.",
     },
     {
-      num:   "3",
+      num: "3",
       title: "Download & Share",
-      desc:  "Download the PDF report or share it with your team.",
+      desc: "Download the PDF report or share it with your team.",
     },
   ];
 
@@ -542,8 +603,8 @@ function HowItWorks() {
         <View style={{ marginLeft: 10, flex: 1 }}>
           <Text style={s.howTitle}>How it works</Text>
           <Text style={s.howDesc}>
-            Reports are generated using AI based on the vulnerabilities found
-            in this scan.
+            Reports are generated using AI based on the vulnerabilities found in
+            this scan.
           </Text>
         </View>
       </View>
@@ -575,105 +636,257 @@ function HowItWorks() {
 const NAVY_900 = "#0d1b2e";
 const NAVY_950 = "#070f1d";
 const NAVY_800 = "#162035";
-const WHITE    = "#ffffff";
-const CYAN     = "#22d3ee";
+const WHITE = "#ffffff";
+const CYAN = "#22d3ee";
 
 const s = StyleSheet.create({
   // ── Layout ──────────────────────────────────────────────────────────────────
-  root:      { flex: 1, backgroundColor: NAVY_950 , paddingTop: 80 },
-  center:    { flex: 1, backgroundColor: NAVY_950, alignItems: "center", justifyContent: "center" },
+  root: { flex: 1, backgroundColor: NAVY_950, paddingTop: 80 },
+  center: {
+    flex: 1,
+    backgroundColor: NAVY_950,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   container: { padding: 16, paddingBottom: 48 },
-  row:       { flexDirection: "row", alignItems: "center" },
+  row: { flexDirection: "row", alignItems: "center" },
 
   // ── Loading ─────────────────────────────────────────────────────────────────
-  loadingText: { marginTop: 12, color: "#94a3b8", fontWeight: "700", fontSize: 14 },
+  loadingText: {
+    marginTop: 12,
+    color: "#94a3b8",
+    fontWeight: "700",
+    fontSize: 14,
+  },
 
   // ── Toast ────────────────────────────────────────────────────────────────────
   toast: {
-    position:       "absolute",
-    top:            Platform.OS === "ios" ? 52 : 16,
-    left:           16,
-    right:          16,
-    zIndex:         99,
-    borderRadius:   14,
-    padding:        14,
+    position: "absolute",
+    top: Platform.OS === "ios" ? 52 : 16,
+    left: 16,
+    right: 16,
+    zIndex: 99,
+    borderRadius: 14,
+    padding: 14,
   },
-  toastSuccess: { backgroundColor: "#064e3b", borderWidth: 1, borderColor: "#10b98150" },
-  toastError:   { backgroundColor: "#450a0a", borderWidth: 1, borderColor: "#ef444450" },
-  toastText:    { color: WHITE, fontWeight: "700", fontSize: 13 },
+  toastSuccess: {
+    backgroundColor: "#064e3b",
+    borderWidth: 1,
+    borderColor: "#10b98150",
+  },
+  toastError: {
+    backgroundColor: "#450a0a",
+    borderWidth: 1,
+    borderColor: "#ef444450",
+  },
+  toastText: { color: WHITE, fontWeight: "700", fontSize: 13 },
 
   // ── Back button ──────────────────────────────────────────────────────────────
-  backBtn:     { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+  backBtn: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   backBtnText: { color: CYAN, fontWeight: "700", fontSize: 13 },
 
   // ── Error banner ──────────────────────────────────────────────────────────────
-  errorBanner:     { backgroundColor: "#450a0a", borderWidth: 1, borderColor: "#ef444450", borderRadius: 14, padding: 12, marginBottom: 12 },
+  errorBanner: {
+    backgroundColor: "#450a0a",
+    borderWidth: 1,
+    borderColor: "#ef444450",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
   errorBannerText: { color: "#fca5a5", fontWeight: "700", fontSize: 13 },
 
   // ── Card (scan info) ──────────────────────────────────────────────────────────
   card: {
     backgroundColor: NAVY_900,
-    borderWidth:     1,
-    borderColor:     NAVY_800,
-    borderRadius:    18,
-    padding:         16,
-    marginBottom:    14,
-    shadowColor:     "#000",
-    shadowOpacity:   0.3,
-    shadowRadius:    12,
-    elevation:       6,
+    borderWidth: 1,
+    borderColor: NAVY_800,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  cardTitle:  { fontSize: 18, fontWeight: "900", color: WHITE },
-  shieldBadge: { height: 48, width: 48, borderRadius: 24, backgroundColor: "#10b9810d", borderWidth: 1, borderColor: "#10b98130", alignItems: "center", justifyContent: "center" },
+  cardTitle: { fontSize: 18, fontWeight: "900", color: WHITE },
+  shieldBadge: {
+    height: 48,
+    width: 48,
+    borderRadius: 24,
+    backgroundColor: "#10b9810d",
+    borderWidth: 1,
+    borderColor: "#10b98130",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-  cyanBtn:     { marginTop: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1, borderColor: "#22d3ee40", backgroundColor: "#22d3ee0d", paddingVertical: 10 },
+  cyanBtn: {
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#22d3ee40",
+    backgroundColor: "#22d3ee0d",
+    paddingVertical: 10,
+  },
   cyanBtnText: { color: CYAN, fontWeight: "900", fontSize: 12 },
 
   // ── Meta grid ────────────────────────────────────────────────────────────────
-  metaGrid:  { marginTop: 16, flexDirection: "row", flexWrap: "wrap", rowGap: 14, columnGap: 14 },
-  metaItem:  { width: "47%" },
+  metaGrid: {
+    marginTop: 16,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: 14,
+    columnGap: 14,
+  },
+  metaItem: { width: "47%" },
   metaLabel: { fontSize: 11, fontWeight: "700", color: "#64748b" },
-  metaText:  { fontSize: 12, fontWeight: "700", color: "#94a3b8" },
+  metaText: { fontSize: 12, fontWeight: "700", color: "#94a3b8" },
   metaValue: { fontSize: 13, fontWeight: "700", color: WHITE, marginTop: 3 },
-  dimText:   { fontSize: 11, color: "#64748b", marginTop: 2 },
+  dimText: { fontSize: 11, color: "#64748b", marginTop: 2 },
 
   // ── Badge ─────────────────────────────────────────────────────────────────────
-  badge:     { alignSelf: "flex-start", borderWidth: 1, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  badge: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
   badgeText: { fontSize: 11, fontWeight: "900" },
 
   // ── Section heading ───────────────────────────────────────────────────────────
-  headingRow:   { flexDirection: "row", alignItems: "center", marginTop: 8, marginBottom: 4 },
+  headingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 4,
+  },
   sectionTitle: { fontSize: 22, fontWeight: "900", color: WHITE },
-  sectionSub:   { fontSize: 12, fontWeight: "700", color: "#94a3b8", marginBottom: 14 },
+  sectionSub: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#94a3b8",
+    marginBottom: 14,
+  },
 
   // ── Empty state ───────────────────────────────────────────────────────────────
-  emptyBox:  { backgroundColor: NAVY_900, borderRadius: 18, borderWidth: 1, borderColor: NAVY_800, padding: 40, alignItems: "center" },
+  emptyBox: {
+    backgroundColor: NAVY_900,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: NAVY_800,
+    padding: 40,
+    alignItems: "center",
+  },
   emptyText: { color: "#94a3b8", fontWeight: "700", fontSize: 14 },
 
   // ── Report card ───────────────────────────────────────────────────────────────
-  reportCard:   { backgroundColor: NAVY_900, borderWidth: 1, borderColor: NAVY_800, borderRadius: 18, padding: 16, marginBottom: 12 },
-  reportIconBox: { height: 48, width: 48, borderRadius: 14, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  reportName:   { fontSize: 15, fontWeight: "900", color: WHITE },
-  reportDesc:   { fontSize: 11, color: "#94a3b8", fontWeight: "700", marginTop: 3, lineHeight: 16 },
-  badgesRow:    { flexDirection: "row", alignItems: "center", marginTop: 8, flexWrap: "wrap" },
-  failureText:  { marginTop: 8, fontSize: 11, fontWeight: "700", color: "#fca5a5" },
+  reportCard: {
+    backgroundColor: NAVY_900,
+    borderWidth: 1,
+    borderColor: NAVY_800,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+  },
+  reportIconBox: {
+    height: 48,
+    width: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reportName: { fontSize: 15, fontWeight: "900", color: WHITE },
+  reportDesc: {
+    fontSize: 11,
+    color: "#94a3b8",
+    fontWeight: "700",
+    marginTop: 3,
+    lineHeight: 16,
+  },
+  badgesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    flexWrap: "wrap",
+  },
+  failureText: {
+    marginTop: 8,
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#fca5a5",
+  },
 
   // ── Action buttons ────────────────────────────────────────────────────────────
-  actionsRow: { flexDirection: "row", alignItems: "center", marginTop: 14, columnGap: 10 },
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 14,
+    columnGap: 10,
+  },
 
-  pdfBtn:             { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1, borderColor: "#a855f740", backgroundColor: "#a855f70d", paddingVertical: 11 },
-  pdfBtnText:         { color: "#d8b4fe", fontWeight: "900", fontSize: 12 },
-  pdfBtnDisabled:     { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1, borderColor: NAVY_800, backgroundColor: NAVY_950, paddingVertical: 11 },
+  pdfBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#a855f740",
+    backgroundColor: "#a855f70d",
+    paddingVertical: 11,
+  },
+  pdfBtnText: { color: "#d8b4fe", fontWeight: "900", fontSize: 12 },
+  pdfBtnDisabled: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: NAVY_800,
+    backgroundColor: NAVY_950,
+    paddingVertical: 11,
+  },
   pdfBtnDisabledText: { color: "#475569", fontWeight: "900", fontSize: 12 },
-  deleteBtn:          { flexDirection: "row", alignItems: "center", justifyContent: "center", borderRadius: 12, borderWidth: 1, borderColor: "#ef444440", backgroundColor: "#ef44440d", paddingHorizontal: 18, paddingVertical: 11 },
-  deleteBtnText:      { color: "#fca5a5", fontWeight: "900", fontSize: 12 },
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#ef444440",
+    backgroundColor: "#ef44440d",
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+  },
+  deleteBtnText: { color: "#fca5a5", fontWeight: "900", fontSize: 12 },
 
   // ── How it works ──────────────────────────────────────────────────────────────
-  howCard:    { marginTop: 8, backgroundColor: NAVY_900, borderWidth: 1, borderColor: "#162035cc", borderRadius: 18, padding: 16 },
-  howTitle:   { fontSize: 13, fontWeight: "900", color: WHITE },
-  howDesc:    { fontSize: 11, fontWeight: "500", color: "#94a3b8", marginTop: 2 },
-  stepBubble: { height: 24, width: 24, borderRadius: 12, backgroundColor: "#4f46e530", alignItems: "center", justifyContent: "center" },
-  stepNum:    { fontSize: 11, fontWeight: "900", color: WHITE },
-  stepTitle:  { fontSize: 12, fontWeight: "900", color: WHITE },
-  stepDesc:   { fontSize: 11, color: "#94a3b8", marginTop: 2, lineHeight: 15 },
+  howCard: {
+    marginTop: 8,
+    backgroundColor: NAVY_900,
+    borderWidth: 1,
+    borderColor: "#162035cc",
+    borderRadius: 18,
+    padding: 16,
+  },
+  howTitle: { fontSize: 13, fontWeight: "900", color: WHITE },
+  howDesc: { fontSize: 11, fontWeight: "500", color: "#94a3b8", marginTop: 2 },
+  stepBubble: {
+    height: 24,
+    width: 24,
+    borderRadius: 12,
+    backgroundColor: "#4f46e530",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepNum: { fontSize: 11, fontWeight: "900", color: WHITE },
+  stepTitle: { fontSize: 12, fontWeight: "900", color: WHITE },
+  stepDesc: { fontSize: 11, color: "#94a3b8", marginTop: 2, lineHeight: 15 },
 });

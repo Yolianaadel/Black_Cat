@@ -63,9 +63,9 @@ export default function ScanHistory() {
   const filteredScans = useMemo(() => {
     return scans.filter(
       (scan: any) =>
-        scan.target.toLowerCase().includes(search.toLowerCase()) ||
-        scan.scanType.toLowerCase().includes(search.toLowerCase()) ||
-        scan.status.toLowerCase().includes(search.toLowerCase()),
+        (scan.target ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (scan.scanType ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (scan.status ?? "").toLowerCase().includes(search.toLowerCase()),
     );
   }, [scans, search]);
 
@@ -105,7 +105,7 @@ export default function ScanHistory() {
               >
                 <Text style={styles.statusText}>{item.status}</Text>
               </View>
-            </View>{" "}
+            </View>
           </View>
         </View>
 
@@ -146,7 +146,10 @@ export default function ScanHistory() {
             },
           ]}
           onPress={() => {
-            router.push(`/tools/dashboard`);
+            router.push({
+              pathname: "/tools/dashboard",
+              params: { scanId: item._id },
+            });
           }}
         >
           <Text style={styles.buttonText}>View Report</Text>

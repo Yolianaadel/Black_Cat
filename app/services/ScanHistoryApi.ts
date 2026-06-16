@@ -13,7 +13,6 @@ export const getAllScans = async (
       await AsyncStorage.getItem(
         "access_token"
       );
-
     if (!token) {
       throw new Error(
         "No access token found"

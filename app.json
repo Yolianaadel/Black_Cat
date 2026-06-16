@@ -8,44 +8,50 @@
     "scheme": "blackcat",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
+    "edgeToEdgeEnabled": true,
+    "predictiveBackGestureEnabled": false,
+
     "ios": {
       "supportsTablet": true
     },
-    "edgeToEdgeEnabled": true,
-    "predictiveBackGestureEnabled": false,
+
+    "android": {
+      "package": "com.yoliana_adel.BlackCat",
+      "googleServicesFile": "./android/app/google-services.json"
+    },
+
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ]
+    ],
+
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+
     "extra": {
       "eas": {
         "projectId": "fbab0de4-ffd7-4349-aa72-6ba18422af1e"
       }
-    },
-    "android": {
-      "package": "com.yoliana_adel.BlackCat"
-    },
-    "plugins": [
-      "expo-font"
-    ]
-  },
-  "web": {
-    "output": "static",
-    "favicon": "./assets/images/favicon.png"
-  },
-  "plugins": [
-    "expo-router",
-    [
-      "expo-splash-screen",
-      {
-        "image": "./assets/images/splash-icon.png",
-        "imageWidth": 200,
-        "resizeMode": "contain",
-        "backgroundColor": "#ffffff",
-        "dark": {
-          "backgroundColor": "#000000"
-        }
-      }
-    ]
-  ],
-  "experiments": {
-    "typedRoutes": true,
-    "reactCompiler": true
+    }
   }
 }

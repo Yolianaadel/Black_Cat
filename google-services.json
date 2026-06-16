@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "375966683774",
+    "project_id": "blackcat-4f3d7",
+    "storage_bucket": "blackcat-4f3d7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:375966683774:android:1a4429a5bb0b14b9783e2f",
+        "android_client_info": {
+          "package_name": "com.yoliana_adel.BlackCat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuQBB38-38LgF7cxxFFUi-JlykgKEtOco"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -9,7 +9,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
@@ -17,7 +16,6 @@ const { width } = Dimensions.get("window");
 
 export default function Scanner() {
   const [url, setUrl] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
 
@@ -124,22 +122,6 @@ export default function Scanner() {
               Deploy Black Cat probe to analyze remote target vulnerabilities.
             </Text>
 
-            <TextInput
-              placeholder="https://target-domain.com"
-              placeholderTextColor="#888"
-              value={url}
-              onChangeText={setUrl}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              style={[
-                styles.terminalInput,
-                isFocused && styles.terminalInputFocused,
-              ]}
-            />
-
-            <Pressable style={styles.scanButton} onPress={handleScan}>
-              <Text style={styles.scanButtonText}>SCAN TARGET</Text>
-            </Pressable>
 
             <Pressable
               onPress={() => router.push("/tools/dashboard")}

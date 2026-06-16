@@ -22,7 +22,6 @@ import {
 } from "../services/ReportApi";
 
 const BASE_URL = "https://black-cat.up.railway.app";
-const SCAN_ID = "6a1930194da0337829c58e65";
 
 type Risk = "High" | "Medium" | "Low" | "Informational";
 type RiskFilter = "All" | Risk;
@@ -206,9 +205,8 @@ function VulnRow({ vuln }: { vuln: Vulnerability }) {
 }
 
 export default function Dashboard() {
-  const { scanId: paramScanId } = useLocalSearchParams();
   const router = useRouter();
-  const scanId = (paramScanId as string) || SCAN_ID;
+  const { scanId } = useLocalSearchParams<{ scanId: string }>();
   const screenWidth = Dimensions.get("window").width;
 
   const [scan, setScan] = useState<ScanDetails | null>(null);
@@ -245,47 +243,48 @@ export default function Dashboard() {
     } finally {
       setScanLoading(false);
     }
-  }; // ✅ fetchScan بتتقفل هنا
+  }; 
 
   const handleGenerateReport = async () => {
     try {
       setGeneratingReport(true);
-      const response = await generateReport(SCAN_ID, selectedReportType);
+      const response = await generateReport(scanId, selectedReportType);
       const reportId = response.data?.data?._id;
-      console.log("Report ID:", reportId); 
+      console.log("Report ID:", reportId);
 
       if (!reportId) throw new Error("Report ID not found");
 
-const interval = setInterval(async () => {
-  try {
-    const statusResponse = await getReportStatus(reportId);
-    const status = statusResponse.data?.data?.status;
-    const reportData = statusResponse.data?.data;
+      const interval = setInterval(async () => {
+        try {
+          const statusResponse = await getReportStatus(reportId);
+          const status = statusResponse.data?.data?.status;
+          const reportData = statusResponse.data?.data;
 
-    if (status === "COMPLETED") {
-      clearInterval(interval);
-      setGeneratingReport(false);
-      // افتح الـ report أو اعمل اللي محتاجه
-      Alert.alert("Success", "Report generated successfully!");
-      // مثلاً لو عندك fileUrl
-      // Linking.openURL(reportData.fileUrl);
-
-    } else if (status === "FAILED") {
-      clearInterval(interval);
-      setGeneratingReport(false);
-      Alert.alert("Error", reportData?.failureReason || "Report generation failed");
-    }
-    // لو status === "PENDING" أو "PROCESSING" → استنى وخلي الـ interval يكمل
-
-  } catch (e) {
-    console.log("Interval error:", e);
-    clearInterval(interval);
-    setGeneratingReport(false);
-  }
-}, 3000);
+          if (status === "COMPLETED") {
+            clearInterval(interval);
+            setGeneratingReport(false);
+            // افتح الـ report أو اعمل اللي محتاجه
+            Alert.alert("Success", "Report generated successfully!");
+            // مثلاً لو عندك fileUrl
+            // Linking.openURL(reportData.fileUrl);
+          } else if (status === "FAILED") {
+            clearInterval(interval);
+            setGeneratingReport(false);
+            Alert.alert(
+              "Error",
+              reportData?.failureReason || "Report generation failed",
+            );
+          }
+          // لو status === "PENDING" أو "PROCESSING" → استنى وخلي الـ interval يكمل
+        } catch (e) {
+          console.log("Interval error:", e);
+          clearInterval(interval);
+          setGeneratingReport(false);
+        }
+      }, 3000);
     } catch (error: any) {
-      console.log("Full error:", error); 
-      console.log("Error response:", error?.response?.data); 
+      console.log("Full error:", error);
+      console.log("Error response:", error?.response?.data);
       setGeneratingReport(false);
       Alert.alert(
         "Error",
@@ -339,7 +338,7 @@ const interval = setInterval(async () => {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#00ffcc" />
-        <Text style={styles.loadingText}>LOADING SCAN REPORT...</Text>
+        <Text style={styles.loadingText}>LOADING SCAN ANALYSIS...</Text>
       </View>
     );
   }
@@ -349,7 +348,7 @@ const interval = setInterval(async () => {
     return (
       <View style={styles.centered}>
         <Ionicons name="warning-outline" size={40} color="#FF3B30" />
-        <Text style={styles.errorText}>{scanError || "Scan not found"}</Text>
+        <Text style={styles.errorText}>{scanError || "Scan not found, Visit Scan History"}</Text>
       </View>
     );
   }

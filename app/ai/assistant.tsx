@@ -478,7 +478,7 @@ export default function AssistantScreen() {
 
       {/* ── INPUT ── */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "position"}
       >
         <View style={styles.inputContainer}>
           <TextInput
