@@ -18,7 +18,7 @@
 
     "android": {
       "package": "com.yoliana_adel.BlackCat",
-      "googleServicesFile": "./android/app/google-services.json"
+      "googleServicesFile": "./google-services.json"
     },
 
     "web": {
